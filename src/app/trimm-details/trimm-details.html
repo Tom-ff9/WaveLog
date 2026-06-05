@@ -1,0 +1,126 @@
+<div class="page">
+  <header class="page-header page-header--col">
+    <div class="page-header-row">
+      <button class="back-btn" (click)="goBack()" aria-label="Zurück">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+      </button>
+      <h1>Trimm Details</h1>
+    </div>
+    <app-spot-header />
+  </header>
+
+  <main class="page-content">
+    @if (session) {
+
+      <!-- Luisleage -->
+      <section class="se-section">
+        <div class="trimm-sail-wrapper">
+          <!-- Sail SVG: height fixed to sailH so slider aligns -->
+          <svg class="trimm-sail-svg" viewBox="0 0 220 300" [style.height.px]="sailH">
+            <!-- Sail fill -->
+            <polygon points="30,13 30,288 165,288"
+              fill="rgba(255,255,255,0.04)" stroke="#555" stroke-width="2.5" stroke-linejoin="round"/>
+            <!-- Battens + numbers -->
+            @for (b of battens; track b.y; let i = $index) {
+              <line [attr.x1]="30" [attr.y1]="b.y" [attr.x2]="b.x" [attr.y2]="b.y"
+                stroke="#555" stroke-width="1.8"/>
+              <text [attr.x]="b.x + 8" [attr.y]="b.y + 5" font-size="13" fill="#aaa">{{ i + 1 }}</text>
+            }
+            <!-- Red luisleage area -->
+            <polygon
+              [attr.points]="luisleageArea"
+              fill="rgba(180,0,0,0.28)"/>
+            <!-- Line from apex to indicator along leech -->
+            <line
+              x1="30" y1="13"
+              [attr.x2]="indicatorPos.x"
+              [attr.y2]="indicatorPos.y"
+              stroke="rgba(255,255,255,0.45)"
+              stroke-width="1.5"/>
+            <!-- Luisleage indicator – moves continuously with slider -->
+            <circle
+              [attr.cx]="indicatorPos.x"
+              [attr.cy]="indicatorPos.y"
+              r="9"
+              fill="white"
+              stroke="none"/>
+          </svg>
+
+          <!-- Vertical slider – same height as SVG for pixel-accurate sync -->
+          <div class="trimm-sail-slider-col">
+            <input
+              type="range"
+              class="trimm-luisleage-slider"
+              [(ngModel)]="luisleage"
+              min="0"
+              max="4"
+              step="0.1"
+              [style.height.px]="sailH"
+            />
+          </div>
+        </div>
+        <div class="trimm-caption-wrap">
+          <p class="trimm-caption">
+            Luisleage Einstellung anhand der Latten<button class="trimm-info-btn" (click)="showLuisInfo = !showLuisInfo"><sup>i</sup></button>
+          </p>
+          @if (showLuisInfo) {
+            <div class="trimm-info-box">Der verstellbare Punkt zeigt an bis zu welchem Punkt im Achterliek das Luisleage geht.</div>
+          }
+        </div>
+      </section>
+
+      <!-- Mastfuß Position -->
+      <section class="se-section">
+        <p class="se-label">Mastfuß Position</p>
+        <div class="trimm-mast-outer">
+          <div class="trimm-mast-rail-row">
+            <div class="trimm-mast-endcap"></div>
+            <div class="trimm-mast-slider-wrap">
+              <input
+                type="range"
+                class="trimm-mast-slider"
+                [(ngModel)]="mastPosition"
+                min="0"
+                max="100"
+                step="1"
+              />
+            </div>
+            <div class="trimm-mast-endcap"></div>
+          </div>
+          <div class="trimm-mast-labels">
+            <span>Hinten</span>
+            <span>Mitte</span>
+            <span>Vorne</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Wellen gefühlt -->
+      <section class="se-section">
+        <p class="se-label">Wellen gefühlt</p>
+        <input
+          type="range"
+          class="trimm-wellen-slider"
+          [(ngModel)]="wellenGefuehlt"
+          min="1"
+          max="5"
+          step="1"
+        />
+        <div class="trimm-tick-labels">
+          <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+        </div>
+      </section>
+
+      <!-- Save -->
+      <button class="trimm-save-btn" (click)="save()">
+        Weitere Trimm Details speichern
+      </button>
+      
+
+    }
+  </main>
+
+  <app-nav />
+</div>

@@ -1,0 +1,87 @@
+<div class="page">
+  <header class="page-header page-header--col">
+    <div class="home-header-row">
+      <button class="profile-icon-btn" (click)="profileOpen = true" aria-label="Profil öffnen">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
+        </svg>
+      </button>
+      <span class="home-app-title">WaveLog</span>
+      <span class="home-header-spacer" aria-hidden="true"></span>
+    </div>
+    <app-spot-header />
+  </header>
+
+  <main class="page-content home-page-content">
+    <section class="home-sticky-panel">
+      <div class="home-top-row">
+        <div class="home-mini-cal">
+          <div class="home-cal-3w-grid">
+            @for (wd of weekdays; track wd) {
+              <div class="home-cal-3w-wd">{{ wd }}</div>
+            }
+            @for (d of homeCal3Weeks; track $index) {
+              <div class="home-cal-3w-day"
+                   [class.home-cal-3w-day--other]="d.isOtherMonth && !d.hasSession && !d.isToday">
+                @if (d.hasSession) {
+                  <span class="home-cal-3w-session">
+                    <svg width="20" height="20" viewBox="0 0 24 24">
+                      <circle cx="12" cy="12" r="11" fill="#8a0000" stroke="#CC0000" stroke-width="1.5"/>
+                      <polyline points="5,12 10,17 19,7" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </span>
+                } @else if (d.isToday) {
+                  <span class="home-cal-3w-today">{{ d.day }}</span>
+                } @else {
+                  <span>{{ d.day }}</span>
+                }
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="home-month-stat">
+          <div class="home-water-box">
+            <div class="home-water-top">
+              <span class="aus-water-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="11" fill="#8a0000" stroke="#CC0000" stroke-width="1.5"/>
+                  <polyline points="5,12 10,17 19,7" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </span>
+              <span class="home-water-num">{{ currentMonthCount }}</span>
+            </div>
+            <span class="home-water-lbl">Wassertage<br>diesen Monat</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="home-sessions-scroll">
+      @if (recentSessions.length > 0) {
+        <section class="recent-sessions">
+          <h2>Sessions der letzten 14 Tage</h2>
+          @for (session of recentSessions; track session.id) {
+            <a [routerLink]="['/session', session.id]" class="session-card">
+              <div class="session-card-date">{{ session.startTime | date:'dd.MM.yyyy' }}</div>
+              <div class="session-card-bottom">
+                <span class="session-card-time">
+                  {{ session.startTime | date:'HH:mm' }} · {{ getDuration(session) }}
+                </span>
+                <span class="session-card-emoji">{{ getEmoji(session.sessionRating) }}</span>
+              </div>
+            </a>
+          }
+        </section>
+      } @else {
+        <p class="empty-state">Keine Sessions in den letzten 14 Tagen.</p>
+      }
+    </section>
+  </main>
+
+  @if (profileOpen) {
+    <app-profile (closed)="profileOpen = false" />
+  }
+
+  <app-nav />
+</div>

@@ -1,0 +1,109 @@
+<div class="page">
+  <header class="page-header page-header--col">
+    <div class="page-header-row">
+      <h1>Training läuft</h1>
+    </div>
+    <app-spot-header />
+  </header>
+
+  <main class="page-content">
+    @if (session) {
+      <div class="sa-section">
+        <p class="sa-label">Startzeit</p>
+        @if (!editingTime) {
+          <div class="sa-time-display" (click)="startEditingTime()" title="Klicken zum Bearbeiten">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+            <span>{{ session.startTime | date:'HH:mm' }}</span>
+            <svg class="sa-edit-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+          </div>
+        } @else {
+          <div class="sa-time-edit">
+            <input type="time" class="sa-time-input" [(ngModel)]="manualTime" />
+            <button class="sa-time-confirm" (click)="confirmManualTime()">✓</button>
+          </div>
+        }
+        <div class="sa-offset-btns">
+          @for (min of [10, 20, 30]; track min) {
+            <button
+              class="sel-btn sa-offset-btn"
+              [class.sel-btn--active]="activeOffset === min"
+              (click)="setStartOffset(min)">
+              +{{ min }} min
+            </button>
+          }
+        </div>
+        @if (activeOffset) {
+          <p class="sa-offset-hint">Session startet in {{ activeOffset }} Minuten</p>
+        }
+      </div>
+
+      <div class="sa-section">
+        <p class="sa-label">Foil Rake</p>
+        @if (!editingFoilRake) {
+          <div class="sa-time-display" (click)="startEditFoilRake()" title="Klicken zum Bearbeiten">
+            <span>{{ foilRake != null ? foilRake : '—' }}</span>
+            <svg class="sa-edit-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+          </div>
+        } @else {
+          <div class="sa-time-edit">
+            <input type="number" inputmode="decimal" step="0.1" class="sa-time-input" [(ngModel)]="tempFoilRake" placeholder="z.B. 1.5" />
+            <button class="sa-time-confirm" (click)="confirmFoilRake()">✓</button>
+          </div>
+        }
+      </div>
+
+      <div class="sa-section">
+        <label class="sa-label" for="windSpeed">Windgeschwindigkeit (kts)</label>
+        <input
+          id="windSpeed"
+          type="text"
+          inputmode="decimal"
+          class="sa-input"
+          [(ngModel)]="windSpeed"
+          placeholder="z.B. 15 oder 22-25"
+        />
+      </div>
+
+      <div class="sa-section">
+        <p class="sa-label">Energielevel</p>
+        <div class="sa-energy-btns">
+          @for (n of [1, 2, 3, 4, 5]; track n) {
+            <button
+              class="sel-btn sa-energy-btn"
+              [class.sel-btn--active]="energyLevel === n"
+              (click)="energyLevel = n">
+              {{ n }}
+            </button>
+          }
+        </div>
+        @if (energyLevel === null) {
+          <p class="sa-field-hint">Bitte Energielevel auswählen</p>
+        }
+      </div>
+
+      @if (!canEnd) {
+        <p class="sa-validation-hint">
+          Bitte
+          @if (!windSpeed) { Windgeschwindigkeit }
+          @if (!windSpeed && energyLevel === null) { und }
+          @if (energyLevel === null) { Energielevel }
+          angeben
+        </p>
+      }
+
+      <button class="sa-end-btn" [class.sa-end-btn--disabled]="!canEnd" [disabled]="!canEnd" (click)="endSession()">
+        Session beenden
+      </button>
+    }
+  </main>
+
+  <app-nav />
+</div>

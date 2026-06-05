@@ -1,0 +1,26 @@
+<div class="page">
+  <header class="page-header">
+    <h1>Sessions</h1>
+  </header>
+
+  <main class="page-content">
+    @if (sessions.length > 0) {
+      @for (session of sessions; track session.id) {
+        <a [routerLink]="['/session', session.id]" class="session-card">
+          <div class="session-card-header">
+            <span class="session-date">{{ session.startTime | date:'dd.MM.yyyy HH:mm' }}</span>
+            <span class="badge">{{ session.trainingPhase }}</span>
+          </div>
+          <div class="session-card-meta">
+            <span>Dauer: {{ getDuration(session) }}</span>
+            <span>{{ session.windCondition }}</span>
+          </div>
+        </a>
+      }
+    } @else {
+      <p class="empty-state">Noch keine abgeschlossenen Sessions.</p>
+    }
+  </main>
+
+  <app-nav />
+</div>

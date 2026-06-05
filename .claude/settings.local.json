@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm start:*)",
+      "Bash(which node:*)",
+      "Bash(export:*)",
+      "Bash(which brew:*)",
+      "Bash(curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash 2>&1)",
+      "Bash(xcode-select:*)",
+      "Bash(curl:*)",
+      "Bash(export PATH=\"$HOME/local/node-v22.14.0-darwin-arm64/bin:$PATH\" && npx ng serve 2>&1)",
+      "Bash(export PATH=\"$HOME/local/node-v22.14.0-darwin-arm64/bin:$PATH\" && npm install 2>&1)",
+      "Bash(export PATH=\"$HOME/local/node-v22.14.0-darwin-arm64/bin:$PATH\" && /Users/tomfranke/Downloads/WaveLog-main/node_modules/.bin/ng serve --open 2>&1)",
+      "Bash(/usr/local/bin/npx ng:*)",
+      "Bash(tail:*)",
+      "Bash(export PATH=\"/Users/tomfranke/local/node-v22.14.0-darwin-arm64/bin:$PATH\" && node_modules/.bin/ng build --configuration development 2>&1)",
+      "Bash(npx ng:*)",
+      "Bash(/usr/local/bin/node_modules/.bin/ng build:*)",
+      "Bash(node:*)",
+      "Bash(head:*)",
+      "Bash(/Users/tomfranke/local/node-v22.14.0-darwin-arm64/bin/node:*)",
+      "WebFetch(domain:www.iqfoilclassofficial.org)",
+      "WebSearch",
+      "Bash(python3:*)",
+      "Bash(npm run:*)"
+    ]
+  }
+}

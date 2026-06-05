@@ -1,0 +1,680 @@
+<div class="page">
+
+  <!-- Header -->
+  <header class="aus-header">
+    <div class="aus-header-top">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" opacity="0.7">
+        <path d="M5 9.2h3V19H5V9.2zM10.6 5h2.8v14h-2.8V5zM16.2 13h2.8v6h-2.8v-6z"/>
+      </svg>
+      <span class="aus-header-title">Analyse</span>
+    </div>
+    <div class="aus-tab-bar">
+      <button class="aus-tab-btn" [class.aus-tab-btn--active]="activeView === 'daten'"     (click)="activeView = 'daten'">Daten</button>
+      <button class="aus-tab-btn" [class.aus-tab-btn--active]="activeView === 'kalender'"  (click)="activeView = 'kalender'">Kalender</button>
+      <button class="aus-tab-btn" [class.aus-tab-btn--active]="activeView === 'learnings'" (click)="activeView = 'learnings'">Learnings</button>
+      <button class="aus-tab-btn" [class.aus-tab-btn--active]="activeView === 'replays'"   (click)="activeView = 'replays'">Replays</button>
+    </div>
+  </header>
+
+  <main class="page-content">
+
+    <!-- ===== KALENDER ===== -->
+    @if (activeView === 'kalender') {
+
+      <div class="aus-month-nav">
+        <span class="aus-month-label">{{ monthLabel }}</span>
+        <div class="aus-month-arrows">
+          <button class="aus-arrow-btn" (click)="prevMonth()">‹</button>
+          <button class="aus-arrow-btn" (click)="nextMonth()">›</button>
+        </div>
+      </div>
+
+      <!-- Both water boxes side by side: month left, year right -->
+      <div class="aus-water-boxes-row">
+        <div class="aus-water-box">
+          <span class="aus-water-icon">
+            <svg width="26" height="26" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="11" fill="#8a0000" stroke="#CC0000" stroke-width="1.5"/>
+              <polyline points="5,12 10,17 19,7" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          <span class="aus-water-count">{{ wasserTage }}</span>
+          <span class="aus-water-label">{{ monatsWasserLabel }}</span>
+        </div>
+        <div class="aus-water-box">
+          <span class="aus-water-count">{{ jahresWasserTage }}</span>
+          <span class="aus-water-label">{{ jahresWasserLabel }}</span>
+        </div>
+      </div>
+
+      <div class="aus-calendar">
+        <div class="aus-cal-grid">
+          @for (wd of weekdays; track wd) {
+            <div class="aus-cal-wd">{{ wd }}</div>
+          }
+          @for (cell of calCells; track $index) {
+            <div
+              class="aus-cal-cell"
+              [class.aus-cal-cell--session]="cell.hasSession"
+              [class.aus-cal-cell--today]="cell.isToday && !cell.hasSession"
+              [class.aus-cal-cell--empty]="cell.day === null"
+              (click)="cell.hasSession && cell.day ? selectCalDay(cell.day) : null">
+              @if (cell.day !== null) {
+                @if (cell.hasSession) {
+                  <span class="aus-cal-num aus-cal-num--session">
+                    <svg width="14" height="14" viewBox="0 0 24 24">
+                      <polyline points="4,13 9,18 20,7" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </span>
+                } @else {
+                  <span class="aus-cal-num">{{ cell.day }}</span>
+                }
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Day panel: session list -->
+      @if (selectedCalDay !== null) {
+        <div class="aus-cal-panel">
+
+          <div class="aus-cal-panel-header">
+            <span class="aus-cal-panel-day">{{ calDayLabel }}</span>
+            <button class="aus-cal-panel-close" (click)="closeCalDay()">✕</button>
+          </div>
+
+          <div class="aus-cal-session-list">
+            @for (s of daySessionsList; track s.id) {
+              <button class="aus-cal-session-item" (click)="openCalSession(s)">
+                <span class="aus-cal-si-time">{{ formatTime(s.startTime) }}</span>
+                <span class="aus-cal-si-dur">{{ sessionDurationLabel(s) }}</span>
+                @if (s.spot) {
+                  <span class="aus-cal-si-spot">{{ s.spot }}</span>
+                }
+                <span class="aus-cal-si-arrow">›</span>
+              </button>
+            }
+          </div>
+        </div>
+      }
+
+    }
+
+    <!-- ===== DATEN ===== -->
+    @if (activeView === 'daten') {
+
+      <!-- Shared filter — applies to all sections -->
+      <div class="aus-daten-filter">
+        <div class="aus-range-tabs">
+          <button class="aus-range-tab" [class.aus-range-tab--active]="filterMode === 'gesamt'" (click)="filterMode = 'gesamt'">Gesamt</button>
+          <button class="aus-range-tab" [class.aus-range-tab--active]="filterMode === 'jahr'"   (click)="filterMode = 'jahr'">Jahr</button>
+          <button class="aus-range-tab" [class.aus-range-tab--active]="filterMode === 'monat'"  (click)="filterMode = 'monat'">Monat</button>
+        </div>
+        @if (filterMode === 'jahr') {
+          <div class="aus-range-nav">
+            <button class="aus-range-nav-btn" (click)="prevFilterYear()">‹</button>
+            <span class="aus-range-nav-label">{{ filterYear }}</span>
+            <button class="aus-range-nav-btn" (click)="nextFilterYear()">›</button>
+          </div>
+        }
+        @if (filterMode === 'monat') {
+          <div class="aus-range-nav">
+            <button class="aus-range-nav-btn" (click)="prevFilterMonth()">‹</button>
+            <span class="aus-range-nav-label">{{ filterMonthLabel }}</span>
+            <button class="aus-range-nav-btn" (click)="nextFilterMonth()">›</button>
+          </div>
+        }
+      </div>
+
+      <div class="aus-year-stat">
+        <span class="aus-year-number">{{ displayedCount }}</span>
+        <span class="aus-year-label">
+          @if (filterMode === 'monat') {
+            Trainingstage<br>diesen Monat!
+          } @else if (filterMode === 'gesamt') {
+            Trainingstage<br>insgesamt
+          } @else {
+            Trainingstage<br>{{ filterYear }}
+          }
+        </span>
+      </div>
+
+      <!-- ── Trainingsinhalte ── -->
+      <h2 class="aus-section-title">Trainingsinhalte</h2>
+
+      <!-- Chart type toggle -->
+      <div class="aus-chart-toggle">
+        <button class="aus-chart-type-btn" [class.aus-chart-type-btn--active]="chartType === 'balken'" (click)="chartType = 'balken'">Balken</button>
+        <button class="aus-chart-type-btn" [class.aus-chart-type-btn--active]="chartType === 'kreis'"  (click)="chartType = 'kreis'">Kreis</button>
+        <button class="aus-chart-type-btn" [class.aus-chart-type-btn--active]="chartType === 'wind'"   (click)="chartType = 'wind'">Wind</button>
+      </div>
+
+      @if (trainingData.length === 0 && chartType !== 'wind') {
+        <div class="aus-chart-empty">Noch keine Trainingsdaten vorhanden.</div>
+      }
+
+      <!-- ── Balken ── -->
+      @if (chartType === 'balken' && trainingData.length > 0) {
+        <div class="aus-bar-chart">
+          @for (item of trainingData; track item.name) {
+            <div class="aus-bar-row aus-bar-row--main">
+              <span class="aus-bar-label aus-bar-label--main">{{ item.name }}</span>
+              <div class="aus-bar-track aus-bar-track--main">
+                <div class="aus-bar-fill" [style.width.%]="(item.count / maxCount) * 100" [style.background]="item.color"></div>
+              </div>
+              <span class="aus-bar-count aus-bar-count--main">{{ item.count }}</span>
+            </div>
+            @for (sub of item.subs; track sub.name) {
+              <div class="aus-bar-row aus-bar-row--sub">
+                <span class="aus-bar-label aus-bar-label--sub">{{ sub.name }}</span>
+                <div class="aus-bar-track aus-bar-track--sub">
+                  <div class="aus-bar-fill aus-bar-fill--sub" [style.width.%]="(sub.count / item.count) * 100" [style.background]="item.color"></div>
+                </div>
+                <span class="aus-bar-count aus-bar-count--sub">{{ sub.count }}</span>
+              </div>
+            }
+          }
+        </div>
+      }
+
+      <!-- ── Kreis ── -->
+      @if (chartType === 'kreis' && trainingData.length > 0) {
+        <div class="aus-pie-wrap">
+          <svg viewBox="0 0 100 100" class="aus-pie-svg">
+            @for (slice of pieSlices; track slice.name) {
+              <path [attr.d]="slice.path" [attr.fill]="slice.color" stroke="#000" stroke-width="0.5"/>
+            }
+            @for (slice of pieSlices; track slice.name) {
+              @if (slice.percent >= 10) {
+                <text
+                  [attr.x]="slice.labelX"
+                  [attr.y]="slice.labelY"
+                  text-anchor="middle"
+                  dominant-baseline="middle"
+                  font-size="7"
+                  font-weight="700"
+                  fill="white">{{ slice.percent }}%</text>
+              }
+            }
+          </svg>
+        </div>
+        <div class="aus-pie-legend">
+          @for (slice of pieSlices; track slice.name) {
+            <div class="aus-legend-item">
+              <span class="aus-legend-dot" [style.background]="slice.color"></span>
+              <span class="aus-legend-name">{{ slice.name }}</span>
+              <span class="aus-legend-pct">{{ slice.percent }}%</span>
+            </div>
+            @for (sub of slice.subs; track sub.name) {
+              <div class="aus-legend-item aus-legend-item--sub">
+                <span class="aus-legend-dot aus-legend-dot--sub" [style.background]="slice.color"></span>
+                <span class="aus-legend-name aus-legend-name--sub">{{ sub.name }}</span>
+                <span class="aus-legend-pct aus-legend-pct--sub">{{ sub.percent }}%</span>
+              </div>
+            }
+          }
+        </div>
+      }
+
+      <!-- ── Wind gestapelt ── -->
+      @if (chartType === 'wind') {
+        @if (windChartData; as wc) {
+
+          <div class="aus-wind-y-label">Anzahl / Volumen</div>
+
+          <svg [attr.viewBox]="wc.viewBox" class="aus-wind-svg">
+
+            <!-- Horizontal grid lines -->
+            @for (gl of wc.gridLines; track gl.y) {
+              <line [attr.x1]="wc.cL" [attr.y1]="gl.y"
+                    [attr.x2]="wc.cR" [attr.y2]="gl.y"
+                    stroke="#333" stroke-width="0.8"/>
+            }
+
+            <!-- Y-axis -->
+            <line [attr.x1]="wc.cL" [attr.y1]="wc.cT"
+                  [attr.x2]="wc.cL" [attr.y2]="wc.cB"
+                  stroke="#555" stroke-width="1"/>
+
+            <!-- X-axis -->
+            <line [attr.x1]="wc.cL" [attr.y1]="wc.cB"
+                  [attr.x2]="wc.cR" [attr.y2]="wc.cB"
+                  stroke="#555" stroke-width="1"/>
+
+            <!-- Y labels -->
+            @for (lbl of wc.yLabels; track lbl.value) {
+              <text [attr.x]="wc.cL - 3" [attr.y]="lbl.y + 2.5"
+                    text-anchor="end" font-size="7" fill="#777">{{ lbl.value }}</text>
+            }
+
+            <!-- Stacked bars + x labels -->
+            @for (bar of wc.bars; track bar.label) {
+              @for (seg of bar.segments; track seg.category) {
+                @if (seg.subs.length === 0) {
+                  <!-- No sub-selections: single solid block -->
+                  <rect [attr.x]="bar.x" [attr.y]="seg.y"
+                        [attr.width]="bar.width" [attr.height]="seg.height"
+                        [attr.fill]="seg.color" rx="1.5"/>
+                } @else {
+                  <!-- With sub-selections: split into shaded sub-blocks -->
+                  @for (sub of seg.subs; track sub.name; let last = $last) {
+                    <rect [attr.x]="bar.x" [attr.y]="sub.y"
+                          [attr.width]="bar.width" [attr.height]="sub.height"
+                          [attr.fill]="seg.color" [attr.fill-opacity]="sub.opacity"/>
+                    @if (!last) {
+                      <line [attr.x1]="bar.x" [attr.y1]="sub.y"
+                            [attr.x2]="bar.x + bar.width" [attr.y2]="sub.y"
+                            stroke="#000" stroke-width="0.6"/>
+                    }
+                  }
+                }
+              }
+              <text [attr.x]="bar.x + bar.width / 2" [attr.y]="wc.cB + 9"
+                    text-anchor="middle" font-size="6.5" fill="#aaa">{{ bar.label }}</text>
+              <text [attr.x]="bar.x + bar.width / 2" [attr.y]="wc.cB + 16"
+                    text-anchor="middle" font-size="6" fill="#666">kn</text>
+            }
+
+          </svg>
+
+          <!-- Legend: parent + sub-shades -->
+          <div class="aus-wind-legend">
+            @for (cat of wc.cats; track cat.name) {
+              <div class="aus-wind-legend-cat">
+                <div class="aus-legend-item">
+                  <span class="aus-legend-dot" [style.background]="cat.color"></span>
+                  <span class="aus-legend-name">{{ cat.name }}</span>
+                </div>
+                @for (sub of cat.subs; track sub.name) {
+                  <div class="aus-legend-item aus-legend-item--sub">
+                    <span class="aus-legend-dot aus-legend-dot--sub"
+                          [style.background]="cat.color"
+                          [style.opacity]="sub.opacity"></span>
+                    <span class="aus-legend-name aus-legend-name--sub">{{ sub.name }}</span>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+
+        } @else {
+          <div class="aus-chart-empty">Noch keine Wind- oder Trainingsdaten vorhanden.</div>
+        }
+      }
+
+      <!-- ── Material ── -->
+      <h2 class="aus-section-title">Material</h2>
+
+      <!-- Category navigation -->
+      <div class="aus-chart-toggle">
+        @for (cat of MAT_CATS; track cat; let i = $index) {
+          <button class="aus-chart-type-btn" [class.aus-chart-type-btn--active]="matCatIndex === i" (click)="matCatIndex = i">{{ cat }}</button>
+        }
+      </div>
+
+      <!-- ── Generic scatter plot (all material categories) ── -->
+      <svg viewBox="0 0 320 185" class="aus-bws-svg">
+
+        <!-- Horizontal grid lines (all y-ticks except the bottom axis line) -->
+        @for (tick of matConfig.yTicks; track tick.label) {
+          @if (tick.y < 147) {
+            <line x1="40" [attr.y1]="tick.y" x2="308" [attr.y2]="tick.y"
+                  stroke="#333" stroke-width="0.8" stroke-dasharray="4,3"/>
+          }
+        }
+
+        <!-- Vertical grid lines -->
+        @for (w of MAT_X_TICKS; track w) {
+          @if (w > 0) {
+            <line [attr.x1]="matWindX(w)" y1="12" [attr.x2]="matWindX(w)" y2="148"
+                  stroke="#222" stroke-width="0.7"/>
+          }
+        }
+
+        <!-- Y-axis -->
+        <line x1="40" y1="12" x2="40" y2="148" stroke="#555" stroke-width="1"/>
+        <!-- X-axis -->
+        <line x1="40" y1="148" x2="308" y2="148" stroke="#555" stroke-width="1"/>
+
+        <!-- Y-axis labels -->
+        @for (tick of matConfig.yTicks; track tick.label) {
+          <text x="36" [attr.y]="tick.y + 3"
+                text-anchor="end" font-size="6.5" fill="#888">{{ tick.label }}</text>
+        }
+
+        <!-- Y-axis title (rotated) -->
+        <text transform="rotate(-90)" x="-80" y="13"
+              text-anchor="middle" font-size="7" fill="#777">{{ matConfig.yLabel }}</text>
+
+        <!-- X-axis labels -->
+        @for (w of MAT_X_TICKS; track w) {
+          <text [attr.x]="matWindX(w)" y="159"
+                text-anchor="middle" font-size="6.5" fill="#888">{{ w === 40 ? '40+' : w }}</text>
+        }
+
+        <!-- X-axis title -->
+        <text x="174" y="173" text-anchor="middle" font-size="7" fill="#777">Windstärke in knoten</text>
+
+        <!-- Data points -->
+        @for (pt of matPoints; track $index) {
+          <circle [attr.cx]="pt.cx" [attr.cy]="pt.cy" r="3.5"
+                  [attr.fill]="pt.color" fill-opacity="0.85"/>
+        }
+
+        @if (matPoints.length === 0) {
+          <text x="174" y="82" text-anchor="middle" font-size="8" fill="#555">Keine Daten vorhanden</text>
+        }
+
+      </svg>
+
+      <!-- Legend -->
+      <div class="aus-bws-legend">
+        <div class="aus-legend-item">
+          <span class="aus-legend-dot" style="background:#66bb6a"></span>
+          <span class="aus-legend-name">Zufrieden</span>
+        </div>
+        <div class="aus-legend-item">
+          <span class="aus-legend-dot" style="background:#ef5350"></span>
+          <span class="aus-legend-name">Unzufrieden</span>
+        </div>
+      </div>
+
+      <!-- ── Stimmung ── -->
+      <h2 class="aus-section-title">Stimmung</h2>
+
+      <h3 class="aus-mood-chart-title">Grind vs Flow</h3>
+
+      @if (moodMatrix.total === 0) {
+        <div class="aus-chart-empty">Keine Sessions mit Energie- und Bewertungsdaten vorhanden.</div>
+      } @else {
+
+        <!-- 2×2 matrix with axis labels -->
+        <div class="aus-mood-matrix-wrap">
+
+          <!-- Y axis: session rating emojis instead of text -->
+          <div class="aus-mood-y-axis">
+            <span class="aus-mood-axis-emoji">😍</span>
+            <span class="aus-mood-y-axis-label">Session</span>
+            <span class="aus-mood-axis-emoji">😤</span>
+          </div>
+
+          <div class="aus-mood-right-col">
+
+            <!-- Column headers -->
+            <div class="aus-mood-col-headers">
+              <div class="aus-mood-col-header">Niedrig<br>Energie</div>
+              <div class="aus-mood-col-header">Hoch<br>Energie</div>
+            </div>
+
+            <!-- 2×2 grid -->
+            <div class="aus-mood-grid">
+
+              <!-- Top-left: Low Energy + High Session = Grind -->
+              <div class="aus-mood-cell aus-mood-cell--grind">
+                <button class="aus-mood-info-btn" (click)="toggleMoodInfo('grind', $event)" aria-label="Info">i</button>
+                <div class="aus-mood-cell-name">Grind</div>
+                <div class="aus-mood-cell-count">{{ moodMatrix.grind.count }}</div>
+                <div class="aus-mood-cell-pct">{{ moodMatrix.grind.pct }}%</div>
+                @if (moodInfoOpen['grind']) {
+                  <div class="aus-mood-info-text">Low Energy / High Joy — Sieg des Willens. Trotz Müdigkeit mental stark und technisch sauber geflogen. Reiner Fokus!</div>
+                }
+              </div>
+
+              <!-- Top-right: High Energy + High Session = Peak -->
+              <div class="aus-mood-cell aus-mood-cell--peak">
+                <button class="aus-mood-info-btn" (click)="toggleMoodInfo('peak', $event)" aria-label="Info">i</button>
+                <div class="aus-mood-cell-name">Peak</div>
+                <div class="aus-mood-cell-count">{{ moodMatrix.peak.count }}</div>
+                <div class="aus-mood-cell-pct">{{ moodMatrix.peak.pct }}%</div>
+                @if (moodInfoOpen['peak']) {
+                  <div class="aus-mood-info-text">High Energy / High Joy — Alles passt. Körper fit, Trimm perfekt. Das ist deine Referenz für maximalen Speed.</div>
+                }
+              </div>
+
+              <!-- Bottom-left: Low Energy + Low Session = Waste -->
+              <div class="aus-mood-cell aus-mood-cell--waste">
+                <button class="aus-mood-info-btn" (click)="toggleMoodInfo('waste', $event)" aria-label="Info">i</button>
+                <div class="aus-mood-cell-name">Waste</div>
+                <div class="aus-mood-cell-count">{{ moodMatrix.waste.count }}</div>
+                <div class="aus-mood-cell-pct">{{ moodMatrix.waste.pct }}%</div>
+                @if (moodInfoOpen['waste']) {
+                  <div class="aus-mood-info-text">Low Energy / Low Joy — Akku leer. Kein Fokus, kein Fortschritt. Zeit für echte Regeneration statt leerer Kilometer.</div>
+                }
+              </div>
+
+              <!-- Bottom-right: High Energy + Low Session = Technik -->
+              <div class="aus-mood-cell aus-mood-cell--technik">
+                <button class="aus-mood-info-btn" (click)="toggleMoodInfo('technik', $event)" aria-label="Info">i</button>
+                <div class="aus-mood-cell-name">Technik</div>
+                <div class="aus-mood-cell-count">{{ moodMatrix.technik.count }}</div>
+                <div class="aus-mood-cell-pct">{{ moodMatrix.technik.pct }}%</div>
+                @if (moodInfoOpen['technik']) {
+                  <div class="aus-mood-info-text">High Energy / Low Joy — Material-Check. Du warst fit, aber der Trimm hat dich gebremst. Analysiere dein Setup oder deine Technik.</div>
+                }
+              </div>
+
+            </div>
+
+            <!-- X axis label -->
+            <div class="aus-mood-x-axis">
+              <span class="aus-mood-axis-end">Niedrig</span>
+              <span class="aus-mood-x-axis-label">Energielevel</span>
+              <span class="aus-mood-axis-end">Hoch</span>
+            </div>
+
+          </div>
+        </div>
+
+      }
+
+      <!-- ── Dauer vs Zufriedenheit ── -->
+      <h3 class="aus-mood-chart-title">Dauer vs Zufriedenheit</h3>
+
+      @if (durationChartData; as dc) {
+
+        <svg viewBox="0 0 320 160" class="aus-dur-svg">
+
+          <!-- Horizontal grid lines -->
+          @for (t of dc.yTicks; track t.emoji) {
+            <line [attr.x1]="dc.cL" [attr.y1]="t.y"
+                  [attr.x2]="dc.cR" [attr.y2]="t.y"
+                  stroke="#333" stroke-width="0.7"/>
+          }
+
+          <!-- Y axis -->
+          <line [attr.x1]="dc.cL" [attr.y1]="dc.cT"
+                [attr.x2]="dc.cL" [attr.y2]="dc.cB"
+                stroke="#555" stroke-width="1"/>
+          <!-- X axis -->
+          <line [attr.x1]="dc.cL" [attr.y1]="dc.cB"
+                [attr.x2]="dc.cR" [attr.y2]="dc.cB"
+                stroke="#555" stroke-width="1"/>
+
+          <!-- Y labels: emojis -->
+          @for (t of dc.yTicks; track t.emoji) {
+            <text [attr.x]="dc.cL - 4" [attr.y]="t.y + 5"
+                  text-anchor="end" font-size="11">{{ t.emoji }}</text>
+          }
+
+          <!-- X tick labels -->
+          @for (t of dc.xTicks; track t.v) {
+            <text [attr.x]="t.x" [attr.y]="dc.cB + 10"
+                  text-anchor="middle" font-size="6.5" fill="#888">{{ t.v }}</text>
+          }
+
+          <!-- X axis title -->
+          <text [attr.x]="(dc.cL + dc.cR) / 2" [attr.y]="dc.cB + 20"
+                text-anchor="middle" font-size="7" fill="#666">Dauer (min)</text>
+
+          <!-- Data points -->
+          @for (pt of dc.points; track $index) {
+            <circle [attr.cx]="pt.cx" [attr.cy]="pt.cy" r="4"
+                    [attr.fill]="pt.color" fill-opacity="0.9"
+                    stroke="#000" stroke-width="0.8"/>
+          }
+
+        </svg>
+
+      } @else {
+        <div class="aus-chart-empty">Keine Sessions mit Dauer und Bewertung vorhanden.</div>
+      }
+
+    }
+
+    <!-- ===== LEARNINGS ===== -->
+    @if (activeView === 'learnings') {
+      <app-learnings [embedded]="true" />
+    }
+
+    <!-- ===== REPLAYS ===== -->
+    @if (activeView === 'replays') {
+      @if (replayGroups.length === 0) {
+        <div class="aus-chart-empty">Noch keine Replays vorhanden.</div>
+      } @else {
+        <div class="aus-replay-groups">
+          @for (group of replayGroups; track group.key) {
+            <button class="aus-replay-group-card" type="button" (click)="openReplayGroup(group)">
+              <span class="aus-replay-group-name">{{ group.displayName }}</span>
+              <svg class="aus-replay-group-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="9 6 15 12 9 18" />
+              </svg>
+            </button>
+          }
+        </div>
+      }
+    }
+
+    @if (activeReplayGroup; as group) {
+      <div class="aus-replay-overlay" (click)="closeReplayGroup()">
+        <div class="aus-replay-modal" (click)="$event.stopPropagation()">
+          <button class="aus-replay-close-btn" type="button" aria-label="Schließen" (click)="closeReplayGroup()">✕</button>
+          <p class="aus-replay-modal-eyebrow">Replays</p>
+          <div class="aus-replay-modal-head">
+            <p class="aus-replay-modal-title">{{ group.displayName }}</p>
+            <p class="aus-replay-modal-subtitle">{{ replayGroupDateLabel(group) }}</p>
+          </div>
+
+          <div class="aus-replay-list">
+            @for (run of group.runs; track run.id) {
+              <div class="aus-replay-swipe-shell">
+                <div class="aus-replay-swipe-actions" [class.aus-replay-swipe-actions--visible]="isReplaySwiped(run)">
+                  <button class="aus-replay-swipe-btn" type="button" aria-label="Bearbeiten" (click)="startReplayEdit(run)">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+                  </button>
+                  <button class="aus-replay-swipe-btn aus-replay-swipe-btn--delete" type="button" aria-label="Löschen" (click)="promptReplayDelete(run)">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                    </svg>
+                  </button>
+                </div>
+
+                <button
+                  class="aus-replay-item aus-replay-item--link"
+                  [class.aus-replay-item--swiped]="isReplaySwiped(run)"
+                  [style.transform]="'translateX(' + replaySwipeOffset(run) + 'px)'"
+                  type="button"
+                  (click)="onReplayItemTap(run)"
+                  (pointerdown)="beginReplaySwipe($event, run)"
+                  (pointermove)="trackReplaySwipe($event)"
+                  (pointerup)="endReplaySwipe()"
+                  (pointercancel)="endReplaySwipe()">
+                  <div class="aus-replay-item-top">
+                    <span class="aus-replay-name">{{ replayRunLabel(run) }}</span>
+                  </div>
+                  <div class="aus-replay-course">{{ run.displayCourseTitle }}</div>
+                  <div class="aus-replay-meta">{{ replayRunMeta(run) }}</div>
+                </button>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    }
+
+    @if (activeReplayGroup; as group) {
+      @for (run of group.runs; track run.id) {
+        @if (isEditingReplay(run)) {
+          <div class="aus-replay-overlay" (click)="cancelReplayEdit()">
+            <div class="se-popup-card se-popup-card--setup aus-replay-edit-modal" (click)="$event.stopPropagation()">
+              <button class="se-popup-close" type="button" aria-label="Schließen" (click)="cancelReplayEdit()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+                  <path d="M6 6l12 12M18 6 6 18" />
+                </svg>
+              </button>
+              <p class="se-popup-title">Replay bearbeiten</p>
+              <div class="aus-replay-edit">
+                <label class="sa-input se-race-assign-input se-race-assign-field">
+                  <span class="se-race-assign-field-copy">
+                    <span class="se-race-assign-field-label">Regatta</span>
+                  </span>
+                  <input class="se-race-assign-field-input" [(ngModel)]="replayEditRegattaName" placeholder="Regatta auswählen" />
+                </label>
+                <label class="sa-input se-race-assign-input se-race-assign-field">
+                  <span class="se-race-assign-field-copy">
+                    <span class="se-race-assign-field-label">Rennen Nr.</span>
+                  </span>
+                  <input class="se-race-assign-field-input" [ngModel]="replayEditRaceNumber" (ngModelChange)="setReplayEditRaceNumber($event)" inputmode="numeric" autocomplete="off" placeholder="(optional)" />
+                </label>
+                <div class="se-popup-meta">
+                  <label class="sa-input se-popup-meta-btn se-popup-meta-btn--stable aus-replay-meta-field">
+                    <span class="se-popup-meta-copy">
+                      <span class="se-popup-meta-label">
+                        <span class="se-popup-meta-icon" aria-hidden="true">
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 21s-6-4.35-6-10a6 6 0 1 1 12 0c0 5.65-6 10-6 10Z"></path>
+                            <circle cx="12" cy="11" r="2.2"></circle>
+                          </svg>
+                        </span>
+                        Ort
+                      </span>
+                      <input class="se-popup-meta-input" [(ngModel)]="replayEditSpot" placeholder="Ort auswählen" />
+                    </span>
+                  </label>
+                  <label class="sa-input se-popup-meta-btn se-popup-meta-btn--stable aus-replay-meta-field">
+                    <span class="se-popup-meta-copy">
+                      <span class="se-popup-meta-label">
+                        <span class="se-popup-meta-icon" aria-hidden="true">
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="4" width="18" height="18" rx="3"></rect>
+                            <line x1="16" y1="2.5" x2="16" y2="6"></line>
+                            <line x1="8" y1="2.5" x2="8" y2="6"></line>
+                            <line x1="3" y1="9" x2="21" y2="9"></line>
+                          </svg>
+                        </span>
+                        Datum
+                      </span>
+                      <input class="se-popup-meta-input se-popup-meta-input--date aus-replay-edit-date" [(ngModel)]="replayEditDate" type="date" />
+                    </span>
+                  </label>
+                </div>
+                <div class="aus-replay-edit-actions">
+                  <button class="sd-confirm-cancel se-race-note-btn" type="button" (click)="cancelReplayEdit()">Abbrechen</button>
+                  <button class="sd-confirm-edit se-race-note-btn" type="button" (click)="saveReplayEdit(run)">Speichern</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+
+        @if (confirmDeleteReplayId === run.id) {
+          <div class="aus-replay-overlay" (click)="cancelReplayDelete()">
+            <div class="sd-confirm-box" (click)="$event.stopPropagation()">
+              <p class="sd-confirm-text">Replay wirklich löschen?</p>
+              <div class="sd-confirm-btns">
+                <button class="sd-confirm-cancel" type="button" (click)="cancelReplayDelete()">Abbrechen</button>
+                <button class="sd-confirm-delete" type="button" (click)="deleteReplay(run)">Löschen</button>
+              </div>
+            </div>
+          </div>
+        }
+      }
+    }
+
+  </main>
+
+  <app-nav />
+</div>

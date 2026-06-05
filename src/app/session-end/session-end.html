@@ -1,0 +1,1962 @@
+<div class="page">
+  <header class="page-header page-header--col">
+    <div class="page-header-row">
+      <h1>Session erfassen</h1>
+    </div>
+    <button class="spot-select-btn se-spot-bar" (click)="openSpotModal()">
+      <span class="se-spot-name">{{ spotName || 'Spot auswählen...' }}</span>
+      <span class="se-spot-date">{{ formattedStartDate }}</span>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polyline points="6 9 12 15 18 9"/>
+      </svg>
+    </button>
+  </header>
+
+  <main class="page-content">
+    @if (session) {
+
+      <section class="se-section">
+        <label class="se-label" for="sessionNotes">Notiz <span class="se-optional">(optional)</span></label>
+        <div class="se-note-shell">
+          <textarea
+            id="sessionNotes"
+            class="sa-input se-note-input"
+            [(ngModel)]="notes"
+            (input)="autoResizeNotes($event)"
+            placeholder="Zusätzliche Notiz zur Session..."
+          ></textarea>
+        </div>
+      </section>
+
+      <section class="se-section">
+        <button class="app-btn-surface se-reflection-btn" (click)="openRaceReflection()">
+          Rennen Reflexion
+        </button>
+      </section>
+
+      <section class="se-section">
+        <p class="se-label">Startzeit</p>
+        <div class="sa-time-edit">
+          <input type="time" class="sa-time-input" [(ngModel)]="startTimeInput" />
+        </div>
+      </section>
+
+      <section class="se-section">
+        <p class="se-label">Endzeit</p>
+        <div class="sa-time-edit">
+          <input type="time" class="sa-time-input" [(ngModel)]="endTimeInput" />
+        </div>
+        @if (!endTimeIsValid) {
+          <p class="sa-field-hint se-time-error">Endzeit muss nach der Startzeit liegen.</p>
+        }
+      </section>
+
+      <section class="se-section">
+        <p class="se-label">Foil Rake</p>
+        <div class="sa-time-edit">
+          <input type="number" inputmode="decimal" step="0.1" class="sa-time-input" [(ngModel)]="session.foilRake" placeholder="z.B. 1.5" />
+        </div>
+      </section>
+
+      <!-- Trainingsinhalte -->
+      <section class="se-section">
+        <p class="se-label">Trainingsinhalte <span class="se-hint">(Mehrfachauswahl möglich)</span></p>
+        @if (!hasContentSelected) {
+          <p class="se-required-hint">Bitte mindestens einen Trainingsinhalt auswählen</p>
+        }
+        <div class="se-content-list">
+          @for (content of contentStates; track content.name) {
+            @if (content.subOptions.length > 0) {
+              <p class="se-content-cat">{{ content.name }}</p>
+              <div class="se-sub-options">
+                @for (sub of content.subOptions; track sub) {
+                  <button
+                    class="sel-btn se-sub-btn"
+                    [class.sel-btn--active]="content.selectedSubs.includes(sub)"
+                    (click)="toggleSubOptionDirect(content, sub)">
+                    {{ sub }}
+                  </button>
+                }
+              </div>
+            }
+          }
+          @if (sonstigesContents.length > 0) {
+            <p class="se-content-cat">Sonstiges</p>
+            <div class="se-sub-options">
+              @for (content of sonstigesContents; track content.name) {
+                <button
+                  class="sel-btn se-sub-btn"
+                  [class.sel-btn--active]="content.selected"
+                  (click)="content.selected = !content.selected">
+                  {{ content.name }}
+                </button>
+              }
+            </div>
+          }
+        </div>
+      </section>
+
+      <!-- Backwingspacer -->
+      <section class="se-section">
+        <p class="se-label">Backwingspacer</p>
+        <div class="se-bws-btns">
+          @for (val of bwsOptions; track val) {
+            <button
+              class="sel-btn se-bws-btn"
+              [class.sel-btn--active]="backwingspacer === val"
+              (click)="backwingspacer = val">
+              {{ val === 0 ? '0' : '+' + val }}
+            </button>
+          }
+        </div>
+      </section>
+
+      <!-- Materialsetup -->
+      <section class="se-section">
+        <p class="se-label">Materialsetup</p>
+        <div class="se-material-btns">
+          <button
+            class="sel-btn se-material-btn"
+            [class.sel-btn--active]="materialSetupSatisfied === true"
+            (click)="setMaterialSatisfied(true)">
+            zufrieden
+          </button>
+          <button
+            class="sel-btn se-material-btn"
+            [class.sel-btn--active]="materialSetupSatisfied === false"
+            (click)="setMaterialSatisfied(false)">
+            unzufrieden
+          </button>
+        </div>
+        @if (materialSetupSatisfied === null) {
+          <p class="sa-field-hint">Bitte auswählen</p>
+        }
+        @if (materialSetupSatisfied === false) {
+          <div class="se-dissat-list">
+            @for (cat of dissatisfactionDefs; track cat.name) {
+              <div class="se-dissat-group">
+                <p class="se-dissat-title">{{ cat.name }}</p>
+                <div class="se-dissat-options">
+                  @for (opt of cat.options; track opt) {
+                    <button
+                      class="sel-btn se-dissat-btn"
+                      [class.sel-btn--active]="hasReason(cat.name, opt)"
+                      (click)="toggleMaterialReason(cat.name, opt)">
+                      {{ opt }}
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+          @if (materialSetupReasons.length === 0) {
+            <p class="sa-field-hint">Bitte mind. einen Grund auswählen</p>
+          }
+        }
+      </section>
+
+      <!-- Grundwind -->
+      <section class="se-section">
+        <label class="se-label" for="windSpeed">Grundwind</label>
+        <div class="se-wind-row">
+          <input
+            id="windSpeed"
+            type="text"
+            inputmode="text"
+            class="sa-input se-wind-input"
+            [(ngModel)]="windSpeed"
+            placeholder="z.B. 15 oder 12-18"
+          />
+          <span class="se-wind-unit">knts</span>
+        </div>
+        @if (!windSpeed.trim()) {
+          <p class="sa-field-hint">Bitte Windstärke angeben</p>
+        }
+      </section>
+
+      <!-- Böen -->
+      <section class="se-section">
+        <label class="se-label" for="gustWind">Böen <span class="se-optional">(optional)</span></label>
+        <div class="se-wind-row">
+          <input
+            id="gustWind"
+            type="text"
+            inputmode="text"
+            class="sa-input se-wind-input"
+            [(ngModel)]="gustWind"
+            placeholder="z.B. 22 oder 18-25"
+          />
+          <span class="se-wind-unit">knts</span>
+        </div>
+      </section>
+
+      <!-- Winddreher (optional) -->
+      <section class="se-section">
+        <label class="se-label" for="windDreher">Winddreher <span class="se-optional">(optional)</span></label>
+        <input
+          id="windDreher"
+          type="text"
+          class="sa-input"
+          [(ngModel)]="windDreher"
+          placeholder="Windreher eintragen..."
+        />
+      </section>
+
+      <section class="se-section">
+        <p class="se-label">Energielevel</p>
+        <div class="sa-energy-btns sa-energy-btns--wide">
+          @for (n of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]; track n) {
+            <button
+              class="sel-btn sa-energy-btn"
+              [class.sel-btn--active]="energyLevel === n"
+              (click)="energyLevel = n">
+              {{ n }}
+            </button>
+          }
+        </div>
+        @if (energyLevel === null) {
+          <p class="sa-field-hint">Bitte Energielevel auswählen</p>
+        }
+      </section>
+
+      <!-- Trimm Details -->
+      <section class="se-section">
+        <div class="trimm-sail-wrapper">
+          <svg class="trimm-sail-svg" viewBox="0 0 220 300" [style.height.px]="sailH">
+            <polygon points="30,13 30,288 165,288"
+              fill="rgba(255,255,255,0.04)" stroke="#555" stroke-width="2.5" stroke-linejoin="round"/>
+            @for (b of battens; track b.y; let i = $index) {
+              <line [attr.x1]="30" [attr.y1]="b.y" [attr.x2]="b.x" [attr.y2]="b.y"
+                stroke="#555" stroke-width="1.8"/>
+              <text [attr.x]="b.x + 8" [attr.y]="b.y + 5" font-size="13" fill="#aaa">{{ i + 1 }}</text>
+            }
+            <polygon
+              [attr.points]="luisleageArea"
+              fill="rgba(180,0,0,0.28)"/>
+            <line
+              x1="30" y1="13"
+              [attr.x2]="indicatorPos.x"
+              [attr.y2]="indicatorPos.y"
+              stroke="rgba(255,255,255,0.45)"
+              stroke-width="1.5"/>
+            <circle
+              [attr.cx]="indicatorPos.x"
+              [attr.cy]="indicatorPos.y"
+              r="9"
+              fill="white"
+              stroke="none"/>
+          </svg>
+          <div class="trimm-sail-slider-col">
+            <input
+              type="range"
+              class="trimm-luisleage-slider"
+              [(ngModel)]="luisleage"
+              min="0"
+              max="4"
+              step="0.1"
+              [style.height.px]="sailH"
+            />
+          </div>
+        </div>
+        <div class="trimm-caption-wrap">
+          <p class="trimm-caption">
+            Luisleage Einstellung anhand der Latten<button class="trimm-info-btn" (click)="showLuisInfo = !showLuisInfo"><sup>i</sup></button>
+          </p>
+          @if (showLuisInfo) {
+            <div class="trimm-info-box">Der verstellbare Punkt zeigt an bis zu welchem Punkt im Achterliek das Luisleage geht.</div>
+          }
+        </div>
+      </section>
+
+      <section class="se-section">
+        <p class="se-label">Mastfuß Position</p>
+        <div class="trimm-mast-outer">
+          <div class="trimm-mast-rail-row">
+            <div class="trimm-mast-endcap"></div>
+            <div class="trimm-mast-slider-wrap">
+              <input
+                type="range"
+                class="trimm-mast-slider"
+                [(ngModel)]="mastPosition"
+                min="0"
+                max="100"
+                step="1"
+              />
+            </div>
+            <div class="trimm-mast-endcap"></div>
+          </div>
+          <div class="trimm-mast-labels">
+            <span>Hinten</span>
+            <span>Mitte</span>
+            <span>Vorne</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Wie war die Session? -->
+      <section class="se-section">
+        <p class="se-label">Wie war die Session?</p>
+        <div class="se-score-grid">
+          @for (n of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]; track n) {
+            <button
+              class="sel-btn se-score-btn"
+              [class.sel-btn--active]="sessionRating === n"
+              (click)="sessionRating = n">
+              {{ n }}
+            </button>
+          }
+        </div>
+      </section>
+
+      <!-- Save -->
+      <button
+        class="sa-end-btn"
+        [class.sa-end-btn--disabled]="!canSave"
+        [disabled]="!canSave"
+        (click)="saveSession()">
+        Session speichern
+      </button>
+
+    }
+  </main>
+
+  @if (spotModalOpen) {
+    <div class="spot-modal-overlay" (click)="closeSpotModal()">
+      <div class="spot-modal" (click)="$event.stopPropagation()">
+        <div class="spot-modal-handle"></div>
+        <h3>Spot und Datum</h3>
+
+        <div class="se-spot-modal-fields">
+          <label class="se-label" for="sessionSpotName">Spot</label>
+          <input
+            id="sessionSpotName"
+            class="sa-input"
+            [(ngModel)]="tempSpotName"
+            placeholder="Spot eingeben..."
+          />
+
+          <label class="se-label" for="sessionSpotDate">Datum</label>
+          <input
+            id="sessionSpotDate"
+            type="date"
+            class="sa-input"
+            [(ngModel)]="tempStartDate"
+          />
+        </div>
+
+        <div class="spot-modal-actions">
+          <button class="spot-modal-btn cancel" (click)="closeSpotModal()">Abbrechen</button>
+          <button class="spot-modal-btn save" (click)="saveSpotModal()">Speichern</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (raceReflectionOpen) {
+    <div class="se-reflection-overlay">
+      <div class="page se-reflection-screen">
+        @if (replayBanner) {
+          <button class="se-replay-banner" type="button" (click)="openReplayBannerPlaceholder()">
+            <span class="se-replay-banner-app">WaveLog</span>
+            <span class="se-replay-banner-title">{{ replayBanner.title }}</span>
+            <span class="se-replay-banner-subtitle">{{ replayBanner.subtitle }}</span>
+          </button>
+        }
+
+        <header class="page-header">
+          <button class="back-btn" (click)="backInRaceReflection()" aria-label="Zurück">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
+          </button>
+          <h1>{{ replayViewRequested || playbackRace ? 'Replay' : 'Rennen Reflexion' }}</h1>
+          @if (playbackRace) {
+            <div class="sd-header-actions">
+              <button class="sd-header-btn" type="button" aria-label="Replay bearbeiten" (click)="openReplayEdit()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+              </button>
+              <button class="sd-header-btn" type="button" aria-label="Replay löschen" (click)="confirmReplayDelete = true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                </svg>
+              </button>
+            </div>
+          } @else if (raceReflectionStep === 'preview' && !replayViewRequested && !playbackRace) {
+            <button
+              class="se-settings-trigger"
+              type="button"
+              aria-label="Einstellungen"
+              (click)="toggleSettingsMenu()">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="4" y1="7" x2="20" y2="7"/>
+                <line x1="4" y1="12" x2="20" y2="12"/>
+                <line x1="4" y1="17" x2="20" y2="17"/>
+                <circle cx="9" cy="7" r="2"/>
+                <circle cx="15" cy="12" r="2"/>
+                <circle cx="11" cy="17" r="2"/>
+              </svg>
+            </button>
+          }
+        </header>
+
+        @if (settingsMenuOpen) {
+          <button class="se-settings-backdrop" type="button" aria-label="Menü schließen" (click)="closeSettingsMenu()"></button>
+          <aside class="se-settings-panel">
+            <div class="se-settings-panel-head">
+              <p class="se-settings-panel-title">Einstellungen</p>
+            </div>
+            <div class="se-settings-section">
+              <p class="se-settings-label">Auto-Kommentare</p>
+              <button
+                class="app-btn-surface se-settings-switch"
+                type="button"
+                [attr.aria-pressed]="autoManeuverComments"
+                [class.se-settings-switch--active]="autoManeuverComments"
+                (click)="setAutoManeuverComments(!autoManeuverComments)">
+                <span class="se-settings-switch-label">Autokommentare</span>
+                <span class="se-settings-switch-track" aria-hidden="true">
+                  <span class="se-settings-switch-thumb"></span>
+                </span>
+              </button>
+            </div>
+          </aside>
+        }
+
+        @if (replayEditOpen) {
+          <div class="se-popup-backdrop" (click)="closeReplayEdit()"></div>
+          <div class="se-popup-card se-popup-card--setup" (click)="$event.stopPropagation()">
+            <button class="se-popup-close" type="button" aria-label="Schließen" (click)="closeReplayEdit()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+                <path d="M6 6l12 12M18 6 6 18" />
+              </svg>
+            </button>
+            <p class="se-popup-title">Replay bearbeiten</p>
+            <button class="sa-input se-race-assign-input se-race-regatta-trigger" type="button" (click)="openRegattaPicker('replay-edit')">
+              <span class="se-race-regatta-trigger-copy">
+                <span class="se-race-regatta-trigger-label">Regatta</span>
+                <span class="se-race-regatta-trigger-value">{{ resolvedReplayEditRegattaName || 'Regatta auswählen' }}</span>
+              </span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+            <input class="sa-input se-race-assign-input" [ngModel]="replayEditRaceNumber" (ngModelChange)="setReplayEditRaceNumber($event)" inputmode="numeric" autocomplete="off" placeholder="Rennen Nr. (optional)" />
+            <input class="sa-input se-race-assign-input" [(ngModel)]="replayEditDate" type="date" />
+            <div class="se-race-note-actions">
+              <button class="sd-confirm-cancel se-race-note-btn" type="button" (click)="closeReplayEdit()">Abbrechen</button>
+              <button class="sd-confirm-edit se-race-note-btn" type="button" (click)="saveReplayEdit()">Speichern</button>
+            </div>
+          </div>
+        }
+
+        @if (confirmReplayDelete) {
+          <div class="sd-confirm-overlay" (click)="confirmReplayDelete = false">
+            <div class="sd-confirm-box" (click)="$event.stopPropagation()">
+              <p class="sd-confirm-text">Replay wirklich löschen?</p>
+              <div class="sd-confirm-btns">
+                <button class="sd-confirm-cancel" (click)="confirmReplayDelete = false">Abbrechen</button>
+                <button class="sd-confirm-delete" (click)="deleteCurrentReplay()">Löschen</button>
+              </div>
+            </div>
+          </div>
+        }
+
+        @if (otherObjectNameOpen) {
+          <div class="se-popup-backdrop" (click)="cancelOtherObjectName()"></div>
+          <div class="se-popup-card se-popup-card--object-name" (click)="$event.stopPropagation()">
+            <p class="se-popup-title">Sonstiges benennen</p>
+            <input
+              class="sa-input se-race-assign-input"
+              [(ngModel)]="otherObjectNameDraft"
+              placeholder="Name eingeben"
+              (keydown.enter)="saveOtherObjectName()" />
+            <div class="se-race-note-actions">
+              <button class="sd-confirm-cancel se-race-note-btn" type="button" (click)="cancelOtherObjectName()">Abbrechen</button>
+              <button class="sd-confirm-edit se-race-note-btn" type="button" [disabled]="!otherObjectNameDraft.trim()" (click)="saveOtherObjectName()">Speichern</button>
+            </div>
+          </div>
+        }
+
+        <main class="page-content se-reflection-content">
+          @if (raceReflectionStep === 'categories') {
+            <section class="se-step-screen" (click)="$event.stopPropagation()">
+              <button class="app-btn-surface se-reflection-choice" (click)="chooseRaceCategory('custom')">Eigener Kurs</button>
+              <button class="app-btn-surface se-reflection-choice" (click)="chooseRaceCategory('course-racing')">Course Racing</button>
+              <button class="app-btn-surface se-reflection-choice" (click)="chooseRaceCategory('sprint-racing')">Sprint Racing</button>
+              <button class="app-btn-surface se-reflection-choice" (click)="chooseRaceCategory('medal-series')">Medal Series</button>
+            </section>
+          }
+
+          @if (raceReflectionStep === 'courses' && selectedRaceCategory !== 'custom') {
+            <section class="se-step-screen se-step-screen--slide" (click)="$event.stopPropagation()">
+              <p class="se-reflection-step-title">{{ selectedRaceCategoryLabel }}</p>
+              @for (option of visibleRaceReflectionOptions; track option.id) {
+                <button class="app-btn-surface se-reflection-choice" (click)="chooseRaceCourse(option)">{{ option.label }}</button>
+              }
+            </section>
+          }
+
+          @if (raceReflectionStep === 'courses' && selectedRaceCategory === 'custom') {
+            <section class="se-step-screen se-step-screen--slide" (click)="$event.stopPropagation()">
+              <p class="se-reflection-step-title">Eigene Kurse</p>
+              @for (course of customCourses; track course.id) {
+                <button class="app-btn-surface se-reflection-choice se-reflection-choice--custom-course" (click)="chooseCustomCourse(course)">
+                  <span>{{ course.name }}</span>
+                </button>
+              }
+              <button class="app-btn-surface se-reflection-choice se-reflection-choice--plus" type="button" (click)="openCustomCourseNamePrompt()">+ Neuer Kurs</button>
+            </section>
+          }
+
+          @if (courseSetupOpen && (selectedRaceCourse || selectedCustomCourse)) {
+            <div class="se-popup-backdrop se-popup-backdrop--content-blur" (click)="backInRaceReflection()"></div>
+            <div class="se-popup-card se-popup-card--setup se-popup-card--embedded" [class.se-popup-card--setup-dropdown-open]="setupRegattaDropdownOpen" (click)="$event.stopPropagation()">
+              <button class="se-popup-close" type="button" aria-label="Zurück" (click)="backInRaceReflection()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+                  <path d="M6 6l12 12M18 6 6 18" />
+                </svg>
+              </button>
+              <p class="se-popup-title">{{ raceReflectionDisplayTitle }}</p>
+
+              <div class="se-race-regatta-inline">
+                <button class="sa-input se-race-assign-input se-race-regatta-trigger" type="button" (click)="openRegattaPicker()">
+                  <span class="se-race-regatta-trigger-copy">
+                    <span class="se-race-regatta-trigger-label">Regatta</span>
+                    <span class="se-race-regatta-trigger-value">{{ resolvedRegattaName || 'Regatta auswählen' }}</span>
+                  </span>
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                    [class.se-race-regatta-trigger-chevron--open]="setupRegattaDropdownOpen">
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+
+                <div class="se-race-regatta-inline-panel" [class.se-race-regatta-inline-panel--open]="setupRegattaDropdownOpen">
+                    <div class="se-race-regatta-inline-new">
+                      <input
+                        class="sa-input se-race-assign-input se-race-regatta-inline-input"
+                        [(ngModel)]="newRegattaNameDraft"
+                        placeholder="Neuer Regatta Name"
+                      />
+                      <button
+                        class="app-btn-surface se-race-regatta-inline-add"
+                        type="button"
+                        aria-label="Regatta hinzufügen"
+                        [disabled]="!newRegattaNameDraft.trim()"
+                        (click)="confirmNewRegattaName()">
+                        <span>+</span>
+                      </button>
+                    </div>
+
+                    @if (similarRegattaMatchName) {
+                      <div class="se-race-regatta-similar">
+                        <p class="se-race-regatta-similar-text">
+                          Es gibt schon eine aehnliche Regatta:
+                          <strong>{{ similarRegattaMatchName }}</strong>
+                        </p>
+                        <div class="se-race-regatta-similar-actions">
+                          <button class="sd-confirm-cancel se-race-note-btn" type="button" (click)="useSimilarExistingRegattaName()">Bestehende nutzen</button>
+                          <button class="sd-confirm-edit se-race-note-btn" type="button" (click)="keepNewSimilarRegattaName()">Neuen Namen erstellen</button>
+                        </div>
+                      </div>
+                    }
+
+                    <div class="se-race-regatta-list se-race-regatta-list--inline">
+                      @for (option of existingRegattaOptions; track option.key) {
+                        <button class="app-btn-surface se-race-regatta-chip" type="button" (click)="useExistingRegatta(option.name, option.spot)">
+                          {{ option.label }}
+                        </button>
+                      }
+                    </div>
+                  </div>
+              </div>
+
+              <div class="se-race-assign-stack">
+              <label class="sa-input se-race-assign-input se-race-assign-field">
+                <span class="se-race-assign-field-copy">
+                  <span class="se-race-assign-field-label">Rennen Nr.</span>
+                </span>
+                <input
+                  class="se-race-assign-field-input"
+                  [ngModel]="raceNumberDraft"
+                  (ngModelChange)="setRaceNumberDraft($event)"
+                  inputmode="numeric"
+                  autocomplete="off"
+                  placeholder="(optional)"
+                />
+              </label>
+
+              <div class="se-popup-meta">
+                <div class="sa-input se-popup-meta-btn se-popup-meta-btn--stable" [class.se-popup-meta-btn--editing]="setupSpotEditOpen" (click)="!setupSpotEditOpen && openSetupSpotEditor()">
+                  <span class="se-popup-meta-copy">
+                    <span class="se-popup-meta-label">
+                      <span class="se-popup-meta-icon" aria-hidden="true">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M12 21s-6-4.35-6-10a6 6 0 1 1 12 0c0 5.65-6 10-6 10Z"></path>
+                          <circle cx="12" cy="11" r="2.2"></circle>
+                        </svg>
+                      </span>
+                      Ort
+                    </span>
+                    @if (!setupSpotEditOpen) {
+                      <span class="se-popup-meta-value">{{ spotName || 'Ort auswählen' }}</span>
+                    } @else {
+                      <input
+                        class="se-popup-meta-input"
+                        [(ngModel)]="tempSpotName"
+                        placeholder="Ort auswählen"
+                        (click)="$event.stopPropagation()"
+                        (blur)="saveSetupSpotEditor()"
+                        (keydown.enter)="saveSetupSpotEditor()"
+                      />
+                    }
+                  </span>
+                </div>
+
+                <div class="sa-input se-popup-meta-btn se-popup-meta-btn--stable" [class.se-popup-meta-btn--editing]="setupDateEditOpen" (click)="!setupDateEditOpen && openSetupDateEditor()">
+                  <span class="se-popup-meta-copy">
+                    <span class="se-popup-meta-label">
+                      <span class="se-popup-meta-icon" aria-hidden="true">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                          <rect x="3" y="4" width="18" height="18" rx="3"></rect>
+                          <line x1="16" y1="2.5" x2="16" y2="6"></line>
+                          <line x1="8" y1="2.5" x2="8" y2="6"></line>
+                          <line x1="3" y1="9" x2="21" y2="9"></line>
+                        </svg>
+                      </span>
+                      Datum
+                    </span>
+                    @if (!setupDateEditOpen) {
+                      <span class="se-popup-meta-value">{{ formattedStartDate || 'Datum auswählen' }}</span>
+                    } @else {
+                      <input
+                        class="se-popup-meta-input se-popup-meta-input--date"
+                        [(ngModel)]="tempStartDate"
+                        type="date"
+                        (click)="$event.stopPropagation()"
+                        (change)="saveSetupDateEditor()"
+                        (blur)="saveSetupDateEditor()"
+                      />
+                    }
+                  </span>
+                </div>
+              </div>
+
+              <button class="sd-confirm-edit se-race-note-btn" [disabled]="!hasReplayAssignment" (click)="openCourseSetupPreview()">
+                Weiter
+              </button>
+              </div>
+
+              @if (duplicateRaceNumberConfirmOpen) {
+                <div class="sd-confirm-overlay" (click)="cancelDuplicateRaceNumber()">
+                  <div class="sd-confirm-box" (click)="$event.stopPropagation()">
+                    <p class="sd-confirm-text">Diese Rennen-Nr. gibt es in der Regatta schon.</p>
+                    <div class="sd-confirm-btns">
+                      <button class="sd-confirm-cancel" type="button" (click)="cancelDuplicateRaceNumber()">Nummer ändern</button>
+                      <button class="sd-confirm-edit" type="button" (click)="continueWithDuplicateRaceNumber()">So lassen</button>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+
+          @if (regattaPickerOpen) {
+            <div class="se-popup-backdrop se-popup-backdrop--content-blur" (click)="closeRegattaPicker()"></div>
+            <div
+              class="se-popup-card se-popup-card--selection"
+              [class.se-popup-card--selection-setup-anchor]="regattaPickerContext === 'setup'"
+              (click)="$event.stopPropagation()">
+              <button class="se-popup-close" type="button" aria-label="Schließen" (click)="closeRegattaPicker()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+                  <path d="M6 6l12 12M18 6 6 18" />
+                </svg>
+              </button>
+              <div class="se-race-regatta-picker">
+                <div class="se-race-regatta-picker-head">
+                  <p class="se-popup-title">Regatta auswählen</p>
+                </div>
+
+                <div class="se-race-regatta-new">
+                  <input
+                    class="sa-input se-race-assign-input"
+                    [(ngModel)]="newRegattaNameDraft"
+                    placeholder="Neuer Regatta Name"
+                  />
+                  <button class="sd-confirm-edit se-race-note-btn se-race-regatta-save-btn" type="button" (click)="confirmNewRegattaName()">Hinzufügen</button>
+                </div>
+
+                @if (similarRegattaMatchName) {
+                  <div class="se-race-regatta-similar">
+                    <p class="se-race-regatta-similar-text">
+                      Es gibt schon eine aehnliche Regatta:
+                      <strong>{{ similarRegattaMatchName }}</strong>
+                    </p>
+                    <div class="se-race-regatta-similar-actions">
+                      <button class="sd-confirm-cancel se-race-note-btn" type="button" (click)="useSimilarExistingRegattaName()">Bestehende nutzen</button>
+                      <button class="sd-confirm-edit se-race-note-btn" type="button" (click)="keepNewSimilarRegattaName()">Neuen Namen erstellen</button>
+                    </div>
+                  </div>
+                }
+
+                @if (existingRegattaOptions.length > 0) {
+                  <p class="se-race-regatta-list-label">Vorhandene Regatten</p>
+                }
+                <div class="se-race-regatta-list">
+                  @for (option of existingRegattaOptions; track option.key) {
+                    <button class="app-btn-surface se-race-regatta-chip" type="button" (click)="useExistingRegatta(option.name, option.spot)">
+                      {{ option.label }}
+                    </button>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+
+          @if (raceReflectionStep === 'preview' && selectedRaceCourse) {
+            <section
+              class="se-course-preview"
+              [class.se-course-preview--replay]="replayViewRequested || !!playbackRace"
+              [class.se-course-preview--object-draw]="isObjectDrawingMode">
+              @if (raceStartHint && !startPositionSelectionActive) {
+                <p class="se-race-status se-race-status--top">{{ raceStartHint }}</p>
+              }
+
+              @if (showStandardCourseBuilderUi) {
+                <div class="se-custom-course-builder-bar">
+                  <div class="se-custom-course-toolbar-actions">
+                    <div class="se-custom-course-tools-menu">
+                      <button
+                        class="app-btn-surface se-custom-course-tool se-custom-course-tool--icon"
+                        type="button"
+                        [class.se-custom-course-tool--active]="standardCourseToolMenuOpen || !!standardCoursePlacementTool"
+                        aria-label="Kursobjekte wählen"
+                        (click)="toggleStandardCourseToolMenu()">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <circle cx="12" cy="17" r="3.2" />
+                          <path d="M12 4v6.3" />
+                          <path d="M9.3 8.4 12 10.9l2.7-2.5" />
+                        </svg>
+                      </button>
+                      @if (standardCourseToolMenuOpen) {
+                        <div class="se-custom-course-tools-popover">
+                          @for (tool of customCourseToolOptions; track tool.id) {
+                            <button
+                              class="app-btn-surface se-custom-course-tool se-custom-course-tool--menu"
+                              [class.se-custom-course-tool--active]="standardCoursePlacementTool === tool.id"
+                              type="button"
+                              (click)="startStandardCoursePlacement(tool.id)">
+                              @switch (tool.id) {
+                                @case ('mark') {
+                                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <circle cx="12" cy="16.5" r="3.3" />
+                                    <path d="M12 4.2v6.1" />
+                                    <path d="M9.4 8.1 12 10.6l2.6-2.5" />
+                                  </svg>
+                                }
+                                @case ('start') {
+                                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M6 18V6" />
+                                    <path d="M8 7.2c2.6.2 3.9 1.6 6.3 1.6 1.3 0 2.5-.4 3.7-1.1v7.2c-1.2.7-2.4 1.1-3.7 1.1-2.4 0-3.7-1.4-6.3-1.6Z" />
+                                  </svg>
+                                }
+                                @case ('finish') {
+                                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M6 18V6" />
+                                    <path d="M8 7.2c2.6.2 3.9 1.6 6.3 1.6 1.3 0 2.5-.4 3.7-1.1v7.2c-1.2.7-2.4 1.1-3.7 1.1-2.4 0-3.7-1.4-6.3-1.6Z" />
+                                    <path d="M15.2 8.3 18 11.1" />
+                                    <path d="M18 8.3 15.2 11.1" />
+                                  </svg>
+                                }
+                                @default {
+                                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <circle cx="8" cy="17" r="2.4" />
+                                    <circle cx="16" cy="17" r="2.4" />
+                                    <path d="M8 6.2v8" />
+                                    <path d="M16 6.2v8" />
+                                  </svg>
+                                }
+                              }
+                              <span>{{ tool.label }}</span>
+                            </button>
+                          }
+                        </div>
+                      }
+                    </div>
+                    <button
+                      class="app-btn-surface se-custom-course-tool se-custom-course-tool--icon"
+                      type="button"
+                      [disabled]="!canUndoStandardCourseAction"
+                      aria-label="Letzte Aktion rückgängig machen"
+                      (click)="undoStandardCourseAction()">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M8 7 4 11l4 4" />
+                        <path d="M5 11h7.2c4.3 0 7.3 2.5 7.3 6.4 0 .9-.1 1.4-.4 2.1" />
+                      </svg>
+                    </button>
+                    <div class="se-custom-course-tools-menu">
+                      <button
+                        class="app-btn-surface se-custom-course-tool se-custom-course-tool--icon"
+                        type="button"
+                        [class.se-custom-course-tool--active]="standardObjectToolMenuOpen || isObjectDrawingMode"
+                        aria-label="Objekte zeichnen"
+                        (click)="toggleStandardObjectToolMenu()">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M5 16c2 0 2-2 4-2s2 2 4 2 2-2 4-2 2 2 2 2" />
+                          <path d="M7 10h10" />
+                        </svg>
+                      </button>
+                      @if (standardObjectToolMenuOpen) {
+                        <div class="se-custom-course-tools-popover">
+                          @for (tool of objectToolOptions; track tool.id) {
+                            <button
+                              class="app-btn-surface se-custom-course-tool se-custom-course-tool--menu"
+                              [class.se-custom-course-tool--active]="objectDrawingTool === tool.id"
+                              type="button"
+                              (click)="startObjectDrawing(tool.id)">
+                              <span class="se-settings-object-icon" aria-hidden="true">
+                                @switch (tool.id) {
+                                  @case ('land') { <svg viewBox="0 0 32 32" class="se-course-object-icon"><path d="M5 19c3 0 3-3 6-3s3 3 6 3 3-3 6-3 3 3 4 3" /></svg> }
+                                  @case ('berg') { <svg viewBox="0 0 32 32" class="se-course-object-icon"><path d="M6 22 14 11l4 5 3-4 5 10Z" /></svg> }
+                                  @case ('hochhaus') { <svg viewBox="0 0 32 32" class="se-course-object-icon"><path d="M9 23V11l7-3v15M16 23V6l7 3v14M12 14h2m-2 4h2m5-6h2m-2 4h2m-7 2h2m5 0h2" /></svg> }
+                                  @case ('wolke') { <svg viewBox="0 0 32 32" class="se-course-object-icon"><path d="M10 22h11a4 4 0 0 0 .5-8A6 6 0 0 0 10 13a4.5 4.5 0 0 0 0 9Z" /></svg> }
+                                  @case ('boe') { <svg viewBox="0 0 32 32" class="se-course-object-icon"><path d="M6 12h13c2.5 0 3.5-1.5 3.5-3S21.5 6 20 6c-1.1 0-2 .4-2.7 1.1M5 18h17c1.8 0 3 1.1 3 2.5S23.8 23 22 23c-.9 0-1.8-.3-2.3-.8M8 24h10" /></svg> }
+                                  @default { <svg viewBox="0 0 32 32" class="se-course-object-icon"><path d="m16 7 2.5 5.3L24 14l-4 3.9.9 5.6-4.9-2.7-4.9 2.7.9-5.6L8 14l5.5-1.7Z" /></svg> }
+                                }
+                              </span>
+                              <span>{{ tool.label }}</span>
+                            </button>
+                          }
+                        </div>
+                      }
+                    </div>
+                    <button
+                      class="app-btn-surface se-custom-course-tool se-custom-course-tool--icon"
+                      type="button"
+                      aria-label="Kurs leeren"
+                      (click)="openStandardCourseClearConfirm()">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M5 7h14" />
+                        <path d="M9 7V5.4c0-.8.6-1.4 1.4-1.4h3.2c.8 0 1.4.6 1.4 1.4V7" />
+                        <path d="M7 7.8 8 19c.1.8.7 1.4 1.5 1.4h5c.8 0 1.4-.6 1.5-1.4l1-11.2" />
+                        <path d="M10 10.2v6.4" />
+                        <path d="M14 10.2v6.4" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              }
+
+              <div class="se-course-stage" [class.se-course-stage--object-draw]="isObjectDrawingMode">
+                <div class="se-course-card" [class.se-course-card--object-draw]="isObjectDrawingMode" (touchstart)="onCoursePinchStart($event)" (touchmove)="onCoursePinchMove($event)" (touchend)="onCoursePinchEnd($event)" (touchcancel)="onCoursePinchEnd($event)" (wheel)="onCourseZoomWheel($event)">
+                  @if (!isObjectDrawingMode) {
+                  <div class="se-course-wind-indicator" aria-hidden="true">
+                    <span class="se-course-wind-indicator-label">WIND</span>
+                    <svg viewBox="0 0 24 52" class="se-course-wind-indicator-icon">
+                      <line x1="12" y1="6" x2="12" y2="40" />
+                      <polyline points="4,30 12,40 20,30" />
+                    </svg>
+                  </div>
+                  <div class="se-course-minimap" aria-hidden="true">
+                    <svg viewBox="0 0 260 280" class="se-course-minimap-svg">
+                      @if (selectedRaceCourse) {
+                        @if (selectedCourseStartLine; as startLine) {
+                          <line [attr.x1]="startLine.boat.x" [attr.y1]="startLine.boat.y" [attr.x2]="startLine.pin.x" [attr.y2]="startLine.pin.y" class="se-course-minimap-line" />
+                          <rect [attr.x]="startLine.boat.x - 7" [attr.y]="startLine.boat.y - 6" width="14" height="10" rx="3" class="se-course-minimap-boat" />
+                          <circle [attr.cx]="startLine.pin.x" [attr.cy]="startLine.pin.y" r="5" class="se-course-minimap-pin" />
+                        }
+                        @for (point of selectedCoursePath; track $index) {
+                          <circle [attr.cx]="point.x" [attr.cy]="point.y" r="4.5" class="se-course-minimap-mark" />
+                        }
+                        @if (showSeparateFinishLine && selectedCourseFinishLine; as finishLine) {
+                          <line [attr.x1]="finishLine.boat.x" [attr.y1]="finishLine.boat.y" [attr.x2]="finishLine.pin.x" [attr.y2]="finishLine.pin.y" class="se-course-minimap-line" />
+                          <rect [attr.x]="finishLine.boat.x - 7" [attr.y]="finishLine.boat.y - 6" width="14" height="10" rx="3" class="se-course-minimap-boat" />
+                          <circle [attr.cx]="finishLine.pin.x" [attr.cy]="finishLine.pin.y" r="5" class="se-course-minimap-pin" />
+                        }
+                      } @else {
+                        <text x="130" y="36" class="se-course-minimap-wind-text">WIND</text>
+                        <line x1="130" y1="48" x2="130" y2="100" class="se-course-minimap-wind-line" />
+                        <polyline points="120,88 130,100 140,88" class="se-course-minimap-wind-head" />
+                      }
+
+                      @if (showMinimapCurrentPosition) {
+                        <circle [attr.cx]="currentMinimapPosition.x" [attr.cy]="currentMinimapPosition.y" r="7" class="se-course-minimap-current" />
+                      }
+                    </svg>
+                  </div>
+                  }
+                  @if (!isObjectDrawingMode) {
+                  <div class="se-course-card-head">
+                    <p class="se-course-card-title">{{ raceReflectionDisplayTitle }}</p>
+                  </div>
+                  }
+                  <svg
+                    viewBox="0 0 260 280"
+                    class="se-course-svg"
+                    aria-hidden="true"
+                    [attr.data-replay-tick]="playbackRenderNonce"
+                    [style.pointer-events]="(isObjectDrawingMode || !!standardCoursePlacementTool || showStandardCourseBuilderUi) ? 'auto' : null"
+                    (touchstart)="onCoursePinchStart($event)"
+                    (touchmove)="onCoursePinchMove($event)"
+                    (touchend)="onCoursePinchEnd($event)"
+                    (touchcancel)="onCoursePinchEnd($event)"
+                    (pointerdown)="isObjectDrawingMode ? onObjectDrawPointerDown($event) : (showStandardCourseBuilderUi && !standardCoursePlacementTool && onCoursePanPointerDown($event))"
+                    (pointermove)="isObjectDrawingMode ? onObjectDrawPointerMove($event) : (showStandardCourseBuilderUi && !standardCoursePlacementTool && onCoursePanPointerMove($event))"
+                    (pointerup)="isObjectDrawingMode ? onObjectDrawPointerUp($event) : (showStandardCourseBuilderUi && !standardCoursePlacementTool && onCoursePanPointerUp($event))"
+                    (pointercancel)="isObjectDrawingMode ? onObjectDrawPointerUp($event) : (showStandardCourseBuilderUi && !standardCoursePlacementTool && onCoursePanPointerUp($event))">
+                    <defs>
+                      <marker id="course-arrowhead" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto" markerUnits="strokeWidth">
+                        <path d="M0,0 L6,3 L0,6 Z" fill="#8e8e8e" />
+                      </marker>
+                      <filter id="course-sail-remove-white" color-interpolation-filters="sRGB">
+                        <feColorMatrix
+                          type="matrix"
+                          values="
+                            1 0 0 0 0
+                            0 1 0 0 0
+                            0 0 1 0 0
+                            -1 -1 -1 0 3"
+                        />
+                      </filter>
+                    </defs>
+
+                    @if (standardCoursePlacementTool) {
+                      <rect
+                        class="se-course-builder-capture"
+                        x="0"
+                        y="0"
+                        width="260"
+                        height="280"
+                        fill="transparent"
+                        (pointerdown)="onStandardCourseCanvasPointerDown($event)"
+                      />
+                    }
+
+                    <g [attr.transform]="courseWorldTransform">
+                    <text x="74" y="34" class="se-course-wind-label">WIND</text>
+                    <line x1="74" y1="46" x2="74" y2="104" class="se-course-wind-arrow" />
+                    <polyline points="62,90 74,104 86,90" class="se-course-wind-arrow-head" />
+                    @if (selectedCourseStartLine; as startLine) {
+                      <g (click)="promptStandardCourseLineDelete('start', $event)">
+                        <line [attr.x1]="startLine.boat.x" [attr.y1]="startLine.boat.y" [attr.x2]="startLine.pin.x" [attr.y2]="startLine.pin.y" class="se-course-line se-course-line--start" />
+                        <text [attr.x]="getCourseLineLabelX(startLine)" [attr.y]="getCourseLineLabelY(startLine)" class="se-course-small-label se-course-small-label--start">{{ getStartLineDisplayLabel() }}</text>
+                      </g>
+                      <rect [attr.x]="startLine.boat.x - 12" [attr.y]="startLine.boat.y - 10" width="24" height="18" rx="5" class="se-course-boat-block" (pointerdown)="beginCourseElementInteraction($event, 'standard', 'start-boat')" />
+                      <circle [attr.cx]="startLine.pin.x" [attr.cy]="startLine.pin.y" r="10" class="se-course-mark se-course-mark--start" (pointerdown)="beginCourseElementInteraction($event, 'standard', 'start-pin')" />
+                    }
+                    @if (showSeparateFinishLine && selectedCourseFinishLine; as finishLine) {
+                      <g (click)="promptStandardCourseLineDelete('finish', $event)">
+                        <line [attr.x1]="finishLine.boat.x" [attr.y1]="finishLine.boat.y" [attr.x2]="finishLine.pin.x" [attr.y2]="finishLine.pin.y" class="se-course-line se-course-line--finish" />
+                        <text [attr.x]="getCourseLineLabelX(finishLine)" [attr.y]="getCourseLineLabelY(finishLine)" class="se-course-small-label se-course-small-label--start">Ziel</text>
+                      </g>
+                      <rect [attr.x]="finishLine.boat.x - 12" [attr.y]="finishLine.boat.y - 10" width="24" height="18" rx="5" class="se-course-boat-block" (pointerdown)="beginCourseElementInteraction($event, 'standard', 'finish-boat')" />
+                      <circle [attr.cx]="finishLine.pin.x" [attr.cy]="finishLine.pin.y" r="10" class="se-course-mark se-course-mark--finish" (pointerdown)="beginCourseElementInteraction($event, 'standard', 'finish-pin')" />
+                    }
+
+                    @for (marker of currentStandardMarkers; track marker.id) {
+                      <g class="se-custom-course-marker" (pointerdown)="beginCourseElementInteraction($event, 'standard', 'marker', marker.id)">
+                        <circle [attr.cx]="marker.x" [attr.cy]="marker.y" r="9" class="se-course-mark" />
+                        <text [attr.x]="marker.x" [attr.y]="marker.y + 5" class="se-course-mark-text">{{ marker.label }}</text>
+                      </g>
+                    }
+                    @for (note of displayedRaceNotes; track note.id) {
+                      <g
+                        class="se-course-note-marker"
+                        [class.se-course-note-marker--maneuver]="isManeuverRaceNote(note)"
+                        [class.se-course-note-marker--active]="shouldShowRaceNoteText(note)"
+                        (click)="toggleRaceNote(note.id)">
+                        <circle [attr.cx]="note.x" [attr.cy]="note.y" r="11" class="se-course-note-icon-bg" />
+                        @if (isStartRaceNote(note)) {
+                          <path
+                            [attr.d]="'M ' + (note.x - 3.5) + ' ' + (note.y - 5) + ' L ' + (note.x + 4.5) + ' ' + note.y + ' L ' + (note.x - 3.5) + ' ' + (note.y + 5) + ' Z'"
+                            class="se-course-note-icon-fill"
+                          />
+                        } @else if (isFinishRaceNote(note)) {
+                          <line [attr.x1]="note.x - 3.5" [attr.y1]="note.y + 5" [attr.x2]="note.x - 3.5" [attr.y2]="note.y - 5" class="se-course-note-icon-path" />
+                          <path
+                            [attr.d]="'M ' + (note.x - 2.5) + ' ' + (note.y - 4.5) + ' C ' + note.x + ' ' + (note.y - 5.5) + ', ' + (note.x + 1.5) + ' ' + (note.y - 1.5) + ', ' + (note.x - 1) + ' ' + note.y"
+                            class="se-course-note-icon-path"
+                          />
+                          <path
+                            [attr.d]="'M ' + (note.x - 2.5) + ' ' + note.y + ' C ' + note.x + ' ' + (note.y - 1) + ', ' + (note.x + 1.5) + ' ' + (note.y + 3) + ', ' + (note.x - 1) + ' ' + (note.y + 4.5)"
+                            class="se-course-note-icon-path"
+                          />
+                        } @else if (isManeuverRaceNote(note)) {
+                          <path
+                            [attr.d]="'M ' + (note.x - 5) + ' ' + (note.y + 1) + ' C ' + (note.x - 7) + ' ' + (note.y - 6) + ', ' + (note.x + 1) + ' ' + (note.y - 8) + ', ' + (note.x + 5) + ' ' + (note.y - 4)"
+                            class="se-course-note-icon-path"
+                          />
+                          <path
+                            [attr.d]="'M ' + (note.x + 1) + ' ' + (note.y - 7) + ' L ' + (note.x + 5) + ' ' + (note.y - 4) + ' L ' + (note.x + 1) + ' ' + (note.y - 2)"
+                            class="se-course-note-icon-path"
+                          />
+                        } @else {
+                          <rect [attr.x]="note.x - 5.5" [attr.y]="note.y - 4.5" width="11" height="9" rx="2.5" class="se-course-note-icon-note" />
+                          <line [attr.x1]="note.x - 3.5" [attr.y1]="note.y - 1.5" [attr.x2]="note.x + 3.5" [attr.y2]="note.y - 1.5" class="se-course-note-icon-line" />
+                          <line [attr.x1]="note.x - 3.5" [attr.y1]="note.y + 1.5" [attr.x2]="note.x + 1.5" [attr.y2]="note.y + 1.5" class="se-course-note-icon-line" />
+                        }
+                      </g>
+
+                      @if (shouldShowRaceNoteText(note)) {
+                        <foreignObject
+                          [attr.x]="getRaceNoteLabelX(note)"
+                          [attr.y]="getRaceNoteLabelY(note)"
+                          [attr.width]="getRaceNoteLabelWidth(note)"
+                          height="42"
+                          class="se-course-note-fo">
+                          <div
+                            xmlns="http://www.w3.org/1999/xhtml"
+                            class="se-course-note-card"
+                            [class.se-course-note-card--reveal]="isRaceNotePlaybackReveal(note)">
+                            <span
+                              class="se-course-note-text"
+                              [class.se-course-note-text--reveal]="isRaceNotePlaybackReveal(note)">
+                              {{ getRaceNoteVisibleText(note) }}
+                            </span>
+                          </div>
+                        </foreignObject>
+                      }
+                    }
+
+                    @for (area of currentRaceObjects; track area.id) {
+                      <g class="se-course-object-area">
+                        @if (!isIconOnlyObject(area.kind) && area.stamps.length > 1) {
+                          <polyline
+                            [attr.points]="getObjectLinePoints(area)"
+                            class="se-course-object-line"
+                            [attr.stroke]="getObjectToolFill(area.kind)"
+                            [attr.stroke-width]="getObjectStrokeWidth(area)"
+                          />
+                        }
+                        @if (!isIconOnlyObject(area.kind) && area.stamps.length === 1) {
+                          @for (stamp of area.stamps; track $index) {
+                            <circle
+                              [attr.cx]="stamp.x"
+                              [attr.cy]="stamp.y"
+                              [attr.r]="stamp.radius"
+                              class="se-course-object-stamp"
+                              [class.se-course-object-stamp--outline]="shouldShowObjectOutline(area.kind)"
+                              [attr.fill]="getObjectToolFill(area.kind)"
+                              [attr.stroke]="shouldShowObjectOutline(area.kind) ? getObjectToolStroke(area.kind) : 'none'"
+                            />
+                          }
+                        }
+                        <foreignObject
+                          [attr.x]="getObjectLabelX(area)"
+                          [attr.y]="getObjectLabelY(area)"
+                          [attr.width]="32"
+                          [attr.height]="32"
+                          class="se-course-object-label-fo">
+                          @if (area.kind === 'sonstiges' && !playbackRace && !isObjectDrawingMode) {
+                            <button
+                              xmlns="http://www.w3.org/1999/xhtml"
+                              type="button"
+                              class="se-course-object-toggle"
+                              [style.--se-object-fill]="getObjectToolFill(area.kind)"
+                              [style.--se-object-stroke]="getObjectToolStroke(area.kind)"
+                              (click)="toggleOtherObjectLabel(area.id)">
+                              <span class="se-course-object-label se-course-object-label--icon-only">
+                                <svg viewBox="0 0 32 32" class="se-course-object-icon" aria-hidden="true">
+                                  <path d="m16 7 2.5 5.3L24 14l-4 3.9.9 5.6-4.9-2.7-4.9 2.7.9-5.6L8 14l5.5-1.7Z" />
+                                </svg>
+                              </span>
+                            </button>
+                          } @else {
+                          <div
+                            xmlns="http://www.w3.org/1999/xhtml"
+                            class="se-course-object-label"
+                            [style.--se-object-fill]="getObjectToolFill(area.kind)"
+                            [style.--se-object-stroke]="getObjectToolStroke(area.kind)"
+                            [class.se-course-object-label--icon-only]="isIconOnlyObject(area.kind)">
+                            @switch (area.kind) {
+                              @case ('land') {
+                                <svg viewBox="0 0 32 32" class="se-course-object-icon" aria-hidden="true">
+                                  <path d="M5 19c3 0 3-3 6-3s3 3 6 3 3-3 6-3 3 3 4 3" />
+                                </svg>
+                              }
+                              @case ('berg') {
+                                <svg viewBox="0 0 32 32" class="se-course-object-icon" aria-hidden="true">
+                                  <path d="M6 22 14 11l4 5 3-4 5 10Z" />
+                                </svg>
+                              }
+                              @case ('hochhaus') {
+                                <svg viewBox="0 0 32 32" class="se-course-object-icon" aria-hidden="true">
+                                  <path d="M9 23V11l7-3v15M16 23V6l7 3v14M12 14h2m-2 4h2m5-6h2m-2 4h2m-7 2h2m5 0h2" />
+                                </svg>
+                              }
+                              @case ('wolke') {
+                                <svg viewBox="0 0 32 32" class="se-course-object-icon" aria-hidden="true">
+                                  <path d="M10 22h11a4 4 0 0 0 .5-8A6 6 0 0 0 10 13a4.5 4.5 0 0 0 0 9Z" />
+                                </svg>
+                              }
+                              @case ('boe') {
+                                <svg viewBox="0 0 32 32" class="se-course-object-icon" aria-hidden="true">
+                                  <path d="M6 12h13c2.5 0 3.5-1.5 3.5-3S21.5 6 20 6c-1.1 0-2 .4-2.7 1.1M5 18h17c1.8 0 3 1.1 3 2.5S23.8 23 22 23c-.9 0-1.8-.3-2.3-.8M8 24h10" />
+                                </svg>
+                              }
+                              @default {
+                                <svg viewBox="0 0 32 32" class="se-course-object-icon" aria-hidden="true">
+                                  <path d="m16 7 2.5 5.3L24 14l-4 3.9.9 5.6-4.9-2.7-4.9 2.7.9-5.6L8 14l5.5-1.7Z" />
+                                </svg>
+                              }
+                            }
+                          </div>
+                          }
+                        </foreignObject>
+                        @if (shouldShowOtherObjectLabel(area)) {
+                          <foreignObject
+                            [attr.x]="area.center.x - 46"
+                            [attr.y]="area.center.y + 18"
+                            width="92"
+                            height="32"
+                            class="se-course-object-name-fo">
+                            <div xmlns="http://www.w3.org/1999/xhtml" class="se-course-object-name">
+                              {{ area.label }}
+                            </div>
+                          </foreignObject>
+                        }
+                      </g>
+                    }
+                    </g>
+
+                    <rect
+                      class="se-course-element-drag-layer"
+                      x="0"
+                      y="0"
+                      width="260"
+                      height="280"
+                      fill="transparent"
+                      (touchstart)="onCoursePinchStart($event)"
+                      (touchmove)="onCoursePinchMove($event)"
+                      (touchend)="onCoursePinchEnd($event)"
+                      (touchcancel)="onCoursePinchEnd($event)"
+                      [style.pointer-events]="hasActiveCourseElementInteraction ? 'auto' : 'none'"
+                      (pointermove)="onCourseElementPointerMove($event)"
+                      (pointerup)="onCourseElementPointerUp($event)"
+                      (pointercancel)="onCourseElementPointerUp($event)"
+                    />
+
+                  @if (showCourseSail && !isObjectDrawingMode) {
+                    <rect
+                      class="se-course-builder-capture"
+                      x="0"
+                      y="0"
+                      width="260"
+                      height="280"
+                      class="se-course-drag-layer"
+                      [style.pointer-events]="isDragDriveMode && !playbackRace ? 'auto' : 'none'"
+                      (pointerdown)="onCourseSailPointerDown($event)"
+                      (pointermove)="onCourseSailPointerMove($event)"
+                      (pointerup)="onCourseSailPointerUp($event)"
+                      (pointercancel)="onCourseSailPointerUp($event)"
+                    />
+
+                    <image
+                      [attr.href]="severneSailImageUrl"
+                      [attr.x]="courseSailX"
+                      [attr.y]="courseSailY"
+                      [attr.width]="displayCourseSailWidth"
+                      [attr.height]="displayCourseSailHeight"
+                      [attr.transform]="courseSailTransform"
+                      preserveAspectRatio="xMidYMid meet"
+                      class="se-course-sail"
+                    />
+                  }
+
+                  </svg>
+
+                </div>
+
+                @if (activeObjectToolOption; as activeTool) {
+                  @if (isObjectDrawingMode) {
+                    <div class="se-object-draw-toolbar">
+                      <div class="se-object-draw-chip" [style.--se-object-fill]="activeTool.fill" [style.--se-object-stroke]="activeTool.stroke">
+                        <span class="se-object-draw-chip-dot"></span>
+                        <span>{{ activeTool.label }}</span>
+                      </div>
+                      <button class="app-btn-surface se-object-draw-btn" type="button" (click)="removeLastObjectArea()">Zurück</button>
+                      <button class="app-btn-surface se-object-draw-btn se-object-draw-btn--primary" type="button" (click)="finishObjectDrawing()">Fertig</button>
+                    </div>
+                  }
+                }
+
+                @if (finishConfirmOpen && !playbackRace) {
+                  <div class="se-race-finish-confirm">
+                    <p class="se-race-finish-eyebrow">Race beenden</p>
+                    <p class="se-race-finish-title">Rennen wirklich beenden?</p>
+                    <input
+                      class="sa-input se-race-assign-input"
+                      [ngModel]="racePlacementDraft"
+                      (ngModelChange)="racePlacementDraft = sanitizePositiveIntegerInput($event)"
+                      type="number"
+                      inputmode="numeric"
+                      min="1"
+                      step="1"
+                      pattern="[0-9]*"
+                      placeholder="Platzierung (optional)"
+                    />
+                    <div class="se-race-note-actions">
+                      <button class="sd-confirm-cancel se-race-note-btn" (click)="cancelRaceFinish()">Abbrechen</button>
+                      <button class="sd-confirm-edit se-race-note-btn" (click)="confirmRaceFinish()">Beenden</button>
+                    </div>
+                  </div>
+                }
+
+                @if (confirmMergeStartFinishOpen) {
+                  <div class="se-race-finish-confirm se-race-finish-confirm--merge">
+                    <p class="se-race-finish-eyebrow">Start/Ziel</p>
+                    <p class="se-race-finish-title">Start und Ziel verschmelzen?</p>
+                    <div class="se-race-note-actions">
+                      <button class="sd-confirm-cancel se-race-note-btn" (click)="cancelMergeStartFinish()">Nein</button>
+                      <button class="sd-confirm-edit se-race-note-btn" (click)="confirmMergeStartFinish()">Ja</button>
+                    </div>
+                  </div>
+                }
+
+                @if (isJoystickDriveMode && raceIsActive && !playbackRace && !isObjectDrawingMode) {
+                  <div class="se-course-drive-ui">
+                    <div
+                      class="se-joystick-pad se-joystick-pad--overlay"
+                      (pointerdown)="onControlJoystickPointerDown($event)"
+                      (pointermove)="onControlJoystickPointerMove($event)"
+                      (pointerup)="onControlJoystickPointerUp($event)"
+                      (pointercancel)="onControlJoystickPointerUp($event)">
+                      <div class="se-joystick-base"></div>
+                      <div class="se-joystick-knob" [style.left.px]="joystickKnobX" [style.top.px]="joystickKnobY"></div>
+                    </div>
+
+                    <div class="se-course-speed-control">
+                      <input
+                        class="se-course-speed-slider"
+                        type="range"
+                        min="1"
+                        max="200"
+                        [ngModel]="driveSpeedPercent"
+                        (ngModelChange)="setDriveSpeedPercent($event)"
+                        aria-label="Geschwindigkeit" />
+                      <span class="se-course-speed-label">{{ driveSpeedPercent }}%</span>
+                    </div>
+
+                    <div class="se-course-drive-actions">
+                      <button class="app-btn-surface se-course-drive-action" type="button" aria-label="Wende oder Halse" (click)="addAutoDetectedManeuverComment()">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M7 17c0-4.4 2.9-7.2 7.6-7.2H18" />
+                          <path d="M15 6.5 18 9.8 15 13" />
+                        </svg>
+                      </button>
+                      <button class="app-btn-surface se-course-drive-action" type="button" aria-label="Kommentar" (click)="toggleRaceCommentPopup()">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M5 6.5h14v9H9.2L5 18.8Z" />
+                          <path d="M8.5 10h7" />
+                          <path d="M8.5 13h4.8" />
+                        </svg>
+                      </button>
+                      <button class="app-btn-surface se-course-drive-action" type="button" aria-label="Mikrofon" (click)="triggerRaceVoiceComment()">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <rect x="9" y="4.5" width="6" height="10" rx="3" />
+                          <path d="M6.5 11.5c0 3 2.2 5.3 5.5 5.3s5.5-2.3 5.5-5.3" />
+                          <path d="M12 16.8V20" />
+                          <path d="M9 20h6" />
+                        </svg>
+                      </button>
+                    </div>
+
+                    @if (raceCommentPopupOpen) {
+                      <div class="se-course-comment-popup">
+                        <textarea
+                          class="sa-input se-race-note-input se-course-comment-popup-input"
+                          [(ngModel)]="raceNoteDraft"
+                          placeholder="Kommentar..."
+                          [rows]="raceNoteRows"
+                        ></textarea>
+                        <div class="se-race-note-actions">
+                          <button class="sd-confirm-cancel se-race-note-btn" type="button" (click)="closeRaceCommentPopup()">Abbrechen</button>
+                          <button class="sd-confirm-edit se-race-note-btn" type="button" [disabled]="!raceNoteDraft.trim()" (click)="submitManualRaceComment()">Speichern</button>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+
+              @if (playbackRace) {
+                <div class="se-replay-controls">
+                  <button class="app-btn-surface se-replay-control-btn" type="button" (click)="jumpPlaybackToPreviousComment()">Zurück</button>
+                  <button class="app-btn-surface se-replay-control-btn" type="button" (click)="togglePlaybackPause()">{{ playbackPauseLabel }}</button>
+                  <button class="app-btn-surface se-replay-control-btn" type="button" (click)="jumpPlaybackToNextComment()">Vor</button>
+                </div>
+              }
+
+              @if (showRaceAction && !replayViewRequested && !playbackRace) {
+                <div class="se-course-actions" [class.se-course-actions--active-race]="raceIsActive">
+                  <button class="app-btn-surface se-race-action-btn" [class.se-race-action-btn--primary]="!raceIsActive" [class.btn-danger-pill]="raceIsActive" (click)="toggleRaceState()">
+                    {{ raceActionLabel }}
+                  </button>
+                </div>
+              }
+
+            </section>
+
+            @if (confirmStandardCourseClearOpen) {
+              <div class="sd-confirm-overlay" (click)="cancelStandardCourseClear()">
+                <div class="sd-confirm-box" (click)="$event.stopPropagation()">
+                  <p class="sd-confirm-title">Kurs leeren?</p>
+                  <p class="sd-confirm-text">Alle gesetzten Tonnen, Start- und Ziellinien werden entfernt.</p>
+                  <div class="sd-confirm-btns">
+                    <button class="sd-confirm-cancel" type="button" (click)="cancelStandardCourseClear()">Abbrechen</button>
+                    <button class="sd-confirm-delete" type="button" (click)="confirmStandardCourseClear()">Alles löschen</button>
+                  </div>
+                </div>
+              </div>
+            }
+
+              @if (confirmStandardCourseMarkerDeleteId) {
+                <div class="sd-confirm-overlay" (click)="cancelStandardCourseMarkerDelete()">
+                  <div class="sd-confirm-box" (click)="$event.stopPropagation()">
+                    <p class="sd-confirm-text">Diese Tonne wird aus dem Kurs entfernt.</p>
+                    <div class="sd-confirm-btns">
+                    <button class="sd-confirm-cancel" type="button" (click)="cancelStandardCourseMarkerDelete()">Abbrechen</button>
+                    <button class="sd-confirm-delete" type="button" (click)="confirmStandardCourseMarkerDelete()">Löschen</button>
+                  </div>
+                  </div>
+                </div>
+              }
+
+              @if (confirmStandardCourseLineDeleteKind) {
+                <div class="sd-confirm-overlay" (click)="cancelStandardCourseLineDelete()">
+                  <div class="sd-confirm-box" (click)="$event.stopPropagation()">
+                    <p class="sd-confirm-text">Dieses Element wird komplett aus dem Kurs entfernt.</p>
+                    <div class="sd-confirm-btns">
+                      <button class="sd-confirm-cancel" type="button" (click)="cancelStandardCourseLineDelete()">Abbrechen</button>
+                      <button class="sd-confirm-delete" type="button" (click)="confirmStandardCourseLineDelete()">Löschen</button>
+                    </div>
+                  </div>
+                </div>
+              }
+          }
+
+          @if (customCourseNameOpen) {
+            <div class="se-popup-backdrop" (click)="closeCustomCourseNamePrompt()"></div>
+            <div class="se-popup-card se-popup-card--object-name" (click)="$event.stopPropagation()">
+              <p class="se-popup-title">Neuer Kurs</p>
+              <input
+                class="sa-input se-race-assign-input"
+                [(ngModel)]="customCourseNameDraft"
+                placeholder="Kursname"
+                (keydown.enter)="confirmCustomCourseName()"
+              />
+              <div class="se-race-note-actions">
+                <button class="sd-confirm-cancel se-race-note-btn" type="button" (click)="closeCustomCourseNamePrompt()">Abbrechen</button>
+                <button class="sd-confirm-edit se-race-note-btn" type="button" [disabled]="!customCourseNameDraft.trim()" (click)="confirmCustomCourseName()">Erstellen</button>
+              </div>
+            </div>
+          }
+
+          @if (raceReflectionStep === 'preview' && isCustomCoursePreview) {
+            <section class="se-course-preview" [class.se-course-preview--replay]="replayViewRequested || !!playbackRace">
+              @if (showCustomCourseBuilderUi) {
+                <div class="se-custom-course-builder-bar">
+                  <div class="se-custom-course-toolbar-actions">
+                    <div class="se-custom-course-tools-menu">
+                      <button
+                        class="app-btn-surface se-custom-course-tool se-custom-course-tool--icon"
+                        type="button"
+                        [class.se-custom-course-tool--active]="customCourseToolMenuOpen || !!customCoursePlacementTool"
+                        aria-label="Bauobjekte wählen"
+                        (click)="toggleCustomCourseToolMenu()">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <circle cx="12" cy="17" r="3.2" />
+                          <path d="M12 4v6.3" />
+                          <path d="M9.3 8.4 12 10.9l2.7-2.5" />
+                        </svg>
+                      </button>
+                      @if (customCourseToolMenuOpen) {
+                        <div class="se-custom-course-tools-popover">
+                          @for (tool of customCourseToolOptions; track tool.id) {
+                            <button
+                              class="app-btn-surface se-custom-course-tool se-custom-course-tool--menu"
+                              [class.se-custom-course-tool--active]="customCoursePlacementTool === tool.id"
+                              type="button"
+                              (click)="startCustomCoursePlacement(tool.id)">
+                              @switch (tool.id) {
+                                @case ('mark') {
+                                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <circle cx="12" cy="16.5" r="3.3" />
+                                    <path d="M12 4.2v6.1" />
+                                    <path d="M9.4 8.1 12 10.6l2.6-2.5" />
+                                  </svg>
+                                }
+                                @case ('start') {
+                                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M6 18V6" />
+                                    <path d="M8 7.2c2.6.2 3.9 1.6 6.3 1.6 1.3 0 2.5-.4 3.7-1.1v7.2c-1.2.7-2.4 1.1-3.7 1.1-2.4 0-3.7-1.4-6.3-1.6Z" />
+                                  </svg>
+                                }
+                                @case ('finish') {
+                                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M6 18V6" />
+                                    <path d="M8 7.2c2.6.2 3.9 1.6 6.3 1.6 1.3 0 2.5-.4 3.7-1.1v7.2c-1.2.7-2.4 1.1-3.7 1.1-2.4 0-3.7-1.4-6.3-1.6Z" />
+                                    <path d="M15.2 8.3 18 11.1" />
+                                    <path d="M18 8.3 15.2 11.1" />
+                                  </svg>
+                                }
+                                @case ('gate') {
+                                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <circle cx="8" cy="17" r="2.4" />
+                                    <circle cx="16" cy="17" r="2.4" />
+                                    <path d="M8 6.2v8" />
+                                    <path d="M16 6.2v8" />
+                                  </svg>
+                                }
+                              }
+                              <span>{{ tool.label }}</span>
+                            </button>
+                          }
+                        </div>
+                      }
+                    </div>
+                    <button
+                      class="app-btn-surface se-custom-course-tool se-custom-course-tool--icon"
+                      type="button"
+                      [disabled]="!canUndoCustomCourseAction"
+                      aria-label="Letzte Aktion rückgängig machen"
+                      (click)="undoCustomCourseAction()">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M8 7 4 11l4 4" />
+                        <path d="M5 11h7.2c4.3 0 7.3 2.5 7.3 6.4 0 .9-.1 1.4-.4 2.1" />
+                      </svg>
+                    </button>
+                    <div class="se-custom-course-tools-menu">
+                      <button
+                        class="app-btn-surface se-custom-course-tool se-custom-course-tool--icon"
+                        type="button"
+                        [class.se-custom-course-tool--active]="customObjectToolMenuOpen || isObjectDrawingMode"
+                        aria-label="Objekte zeichnen"
+                        (click)="toggleCustomObjectToolMenu()">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M5 16c2 0 2-2 4-2s2 2 4 2 2-2 4-2 2 2 2 2" />
+                          <path d="M7 10h10" />
+                        </svg>
+                      </button>
+                      @if (customObjectToolMenuOpen) {
+                        <div class="se-custom-course-tools-popover">
+                          @for (tool of objectToolOptions; track tool.id) {
+                            <button
+                              class="app-btn-surface se-custom-course-tool se-custom-course-tool--menu"
+                              [class.se-custom-course-tool--active]="objectDrawingTool === tool.id"
+                              type="button"
+                              (click)="startObjectDrawing(tool.id)">
+                              <span class="se-settings-object-icon" aria-hidden="true">
+                                @switch (tool.id) {
+                                  @case ('land') { <svg viewBox="0 0 32 32" class="se-course-object-icon"><path d="M5 19c3 0 3-3 6-3s3 3 6 3 3-3 6-3 3 3 4 3" /></svg> }
+                                  @case ('berg') { <svg viewBox="0 0 32 32" class="se-course-object-icon"><path d="M6 22 14 11l4 5 3-4 5 10Z" /></svg> }
+                                  @case ('hochhaus') { <svg viewBox="0 0 32 32" class="se-course-object-icon"><path d="M9 23V11l7-3v15M16 23V6l7 3v14M12 14h2m-2 4h2m5-6h2m-2 4h2m-7 2h2m5 0h2" /></svg> }
+                                  @case ('wolke') { <svg viewBox="0 0 32 32" class="se-course-object-icon"><path d="M10 22h11a4 4 0 0 0 .5-8A6 6 0 0 0 10 13a4.5 4.5 0 0 0 0 9Z" /></svg> }
+                                  @case ('boe') { <svg viewBox="0 0 32 32" class="se-course-object-icon"><path d="M6 12h13c2.5 0 3.5-1.5 3.5-3S21.5 6 20 6c-1.1 0-2 .4-2.7 1.1M5 18h17c1.8 0 3 1.1 3 2.5S23.8 23 22 23c-.9 0-1.8-.3-2.3-.8M8 24h10" /></svg> }
+                                  @default { <svg viewBox="0 0 32 32" class="se-course-object-icon"><path d="m16 7 2.5 5.3L24 14l-4 3.9.9 5.6-4.9-2.7-4.9 2.7.9-5.6L8 14l5.5-1.7Z" /></svg> }
+                                }
+                              </span>
+                              <span>{{ tool.label }}</span>
+                            </button>
+                          }
+                        </div>
+                      }
+                    </div>
+                    <button
+                      class="app-btn-surface se-custom-course-tool se-custom-course-tool--icon"
+                      type="button"
+                      aria-label="Kurs leeren"
+                      (click)="openCustomCourseClearConfirm()">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M5 7h14" />
+                        <path d="M9 7V5.4c0-.8.6-1.4 1.4-1.4h3.2c.8 0 1.4.6 1.4 1.4V7" />
+                        <path d="M7 7.8 8 19c.1.8.7 1.4 1.5 1.4h5c.8 0 1.4-.6 1.5-1.4l1-11.2" />
+                        <path d="M10 10.2v6.4" />
+                        <path d="M14 10.2v6.4" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              }
+
+              @if (activeObjectToolOption; as activeTool) {
+                @if (isObjectDrawingMode) {
+                  <div class="se-object-draw-toolbar se-object-draw-toolbar--custom">
+                    <div class="se-object-draw-chip" [style.--se-object-fill]="activeTool.fill" [style.--se-object-stroke]="activeTool.stroke">
+                      <span class="se-object-draw-chip-dot"></span>
+                      <span>{{ activeTool.label }}</span>
+                    </div>
+                    <button class="app-btn-surface se-object-draw-btn" type="button" (click)="removeLastObjectArea()">Zurück</button>
+                    <button class="app-btn-surface se-object-draw-btn se-object-draw-btn--primary" type="button" (click)="finishObjectDrawing()">Fertig</button>
+                  </div>
+                }
+              }
+
+              <div class="se-course-stage">
+                <div class="se-course-card" (touchstart)="onCoursePinchStart($event)" (touchmove)="onCoursePinchMove($event)" (touchend)="onCoursePinchEnd($event)" (touchcancel)="onCoursePinchEnd($event)" (wheel)="onCourseZoomWheel($event)">
+                  <div class="se-course-wind-indicator" aria-hidden="true">
+                    <span class="se-course-wind-indicator-label">WIND</span>
+                    <svg viewBox="0 0 24 52" class="se-course-wind-indicator-icon">
+                      <line x1="12" y1="6" x2="12" y2="40" />
+                      <polyline points="4,30 12,40 20,30" />
+                    </svg>
+                  </div>
+                  <div class="se-course-minimap" aria-hidden="true">
+                    <svg viewBox="0 0 260 280" class="se-course-minimap-svg">
+                      <text x="130" y="36" class="se-course-minimap-wind-text">WIND</text>
+                      <line x1="130" y1="48" x2="130" y2="100" class="se-course-minimap-wind-line" />
+                      <polyline points="120,88 130,100 140,88" class="se-course-minimap-wind-head" />
+                      @if (selectedCourseStartLine; as startLine) {
+                        <line [attr.x1]="startLine.boat.x" [attr.y1]="startLine.boat.y" [attr.x2]="startLine.pin.x" [attr.y2]="startLine.pin.y" class="se-course-minimap-line" />
+                        <rect [attr.x]="startLine.boat.x - 7" [attr.y]="startLine.boat.y - 6" width="14" height="10" rx="3" class="se-course-minimap-boat" />
+                        <circle [attr.cx]="startLine.pin.x" [attr.cy]="startLine.pin.y" r="5" class="se-course-minimap-pin" />
+                      }
+                      @if (showSeparateFinishLine && selectedCourseFinishLine; as finishLine) {
+                        <line [attr.x1]="finishLine.boat.x" [attr.y1]="finishLine.boat.y" [attr.x2]="finishLine.pin.x" [attr.y2]="finishLine.pin.y" class="se-course-minimap-line se-course-minimap-line--finish" />
+                        <rect [attr.x]="finishLine.boat.x - 7" [attr.y]="finishLine.boat.y - 6" width="14" height="10" rx="3" class="se-course-minimap-boat" />
+                        <circle [attr.cx]="finishLine.pin.x" [attr.cy]="finishLine.pin.y" r="5" class="se-course-minimap-pin" />
+                      }
+                      @for (marker of currentCustomMarkers; track marker.id) {
+                        <circle [attr.cx]="marker.x" [attr.cy]="marker.y" r="4.5" class="se-course-minimap-mark" />
+                      }
+                      @if (showMinimapCurrentPosition) {
+                        <circle [attr.cx]="currentMinimapPosition.x" [attr.cy]="currentMinimapPosition.y" r="7" class="se-course-minimap-current" />
+                      }
+                    </svg>
+                  </div>
+                  <div class="se-course-card-head">
+                    <p class="se-course-card-title">{{ raceReflectionDisplayTitle }}</p>
+                  </div>
+                  <svg
+                    viewBox="0 0 260 280"
+                    class="se-course-svg"
+                    aria-hidden="true"
+                    [attr.data-replay-tick]="playbackRenderNonce"
+                    [style.pointer-events]="(isObjectDrawingMode || showCustomCourseBuilderUi || !!customCoursePlacementTool) ? 'auto' : null"
+                    (touchstart)="onCoursePinchStart($event)"
+                    (touchmove)="onCoursePinchMove($event)"
+                    (touchend)="onCoursePinchEnd($event)"
+                    (touchcancel)="onCoursePinchEnd($event)"
+                    (pointerdown)="isObjectDrawingMode ? onObjectDrawPointerDown($event) : (showCustomCourseBuilderUi && !customCoursePlacementTool && onCustomCoursePanPointerDown($event))"
+                    (pointermove)="isObjectDrawingMode ? onObjectDrawPointerMove($event) : (showCustomCourseBuilderUi && !customCoursePlacementTool && onCustomCoursePanPointerMove($event))"
+                    (pointerup)="isObjectDrawingMode ? onObjectDrawPointerUp($event) : (showCustomCourseBuilderUi && !customCoursePlacementTool && onCustomCoursePanPointerUp($event))"
+                    (pointercancel)="isObjectDrawingMode ? onObjectDrawPointerUp($event) : (showCustomCourseBuilderUi && !customCoursePlacementTool && onCustomCoursePanPointerUp($event))">
+                    <g [attr.transform]="customWorldTransform">
+                    <text x="74" y="34" class="se-course-wind-label">WIND</text>
+                    <line x1="74" y1="46" x2="74" y2="104" class="se-course-wind-arrow" />
+                    <polyline points="62,90 74,104 86,90" class="se-course-wind-arrow-head" />
+                    @if (selectedCourseStartLine; as startLine) {
+                      <g (click)="promptCustomCourseLineDelete('start', $event)">
+                        <line [attr.x1]="startLine.boat.x" [attr.y1]="startLine.boat.y" [attr.x2]="startLine.pin.x" [attr.y2]="startLine.pin.y" class="se-course-line se-course-line--start" />
+                        <text [attr.x]="getCourseLineLabelX(startLine)" [attr.y]="getCourseLineLabelY(startLine)" class="se-course-small-label se-course-small-label--start">{{ getStartLineDisplayLabel() }}</text>
+                      </g>
+                      <rect [attr.x]="startLine.boat.x - 12" [attr.y]="startLine.boat.y - 10" width="24" height="18" rx="5" class="se-course-boat-block" (pointerdown)="beginCourseElementInteraction($event, 'custom', 'start-boat')" />
+                      <circle [attr.cx]="startLine.pin.x" [attr.cy]="startLine.pin.y" r="10" class="se-course-mark se-course-mark--start" (pointerdown)="beginCourseElementInteraction($event, 'custom', 'start-pin')" />
+                    }
+                    @if (showSeparateFinishLine && selectedCourseFinishLine; as finishLine) {
+                      <g (click)="promptCustomCourseLineDelete('finish', $event)">
+                        <line [attr.x1]="finishLine.boat.x" [attr.y1]="finishLine.boat.y" [attr.x2]="finishLine.pin.x" [attr.y2]="finishLine.pin.y" class="se-course-line se-course-line--finish" />
+                        <text [attr.x]="getCourseLineLabelX(finishLine)" [attr.y]="getCourseLineLabelY(finishLine)" class="se-course-small-label se-course-small-label--start">Ziel</text>
+                      </g>
+                      <rect [attr.x]="finishLine.boat.x - 12" [attr.y]="finishLine.boat.y - 10" width="24" height="18" rx="5" class="se-course-boat-block" (pointerdown)="beginCourseElementInteraction($event, 'custom', 'finish-boat')" />
+                      <circle [attr.cx]="finishLine.pin.x" [attr.cy]="finishLine.pin.y" r="10" class="se-course-mark se-course-mark--finish" (pointerdown)="beginCourseElementInteraction($event, 'custom', 'finish-pin')" />
+                    }
+
+                    @for (marker of currentCustomMarkers; track marker.id) {
+                      <g class="se-custom-course-marker" (pointerdown)="beginCourseElementInteraction($event, 'custom', 'marker', marker.id)">
+                        <circle [attr.cx]="marker.x" [attr.cy]="marker.y" r="9" class="se-course-mark" />
+                        <text [attr.x]="marker.x" [attr.y]="marker.y + 5" class="se-course-mark-text">{{ marker.label }}</text>
+                      </g>
+                    }
+
+                    @for (area of currentRaceObjects; track area.id) {
+                      <g class="se-course-object-area">
+                        @if (!isIconOnlyObject(area.kind) && area.stamps.length > 1) {
+                          <polyline
+                            [attr.points]="getObjectLinePoints(area)"
+                            class="se-course-object-line"
+                            [attr.stroke]="getObjectToolFill(area.kind)"
+                            [attr.stroke-width]="getObjectStrokeWidth(area)"
+                          />
+                        }
+                        @if (!isIconOnlyObject(area.kind) && area.stamps.length === 1) {
+                          @for (stamp of area.stamps; track $index) {
+                            <circle
+                              [attr.cx]="stamp.x"
+                              [attr.cy]="stamp.y"
+                              [attr.r]="stamp.radius"
+                              class="se-course-object-stamp"
+                              [class.se-course-object-stamp--outline]="shouldShowObjectOutline(area.kind)"
+                              [attr.fill]="getObjectToolFill(area.kind)"
+                              [attr.stroke]="shouldShowObjectOutline(area.kind) ? getObjectToolStroke(area.kind) : 'none'"
+                            />
+                          }
+                        }
+                        <foreignObject
+                          [attr.x]="getObjectLabelX(area)"
+                          [attr.y]="getObjectLabelY(area)"
+                          [attr.width]="32"
+                          [attr.height]="32"
+                          class="se-course-object-label-fo">
+                          @if (area.kind === 'sonstiges' && !playbackRace && !isObjectDrawingMode) {
+                            <button
+                              xmlns="http://www.w3.org/1999/xhtml"
+                              type="button"
+                              class="se-course-object-toggle"
+                              [style.--se-object-fill]="getObjectToolFill(area.kind)"
+                              [style.--se-object-stroke]="getObjectToolStroke(area.kind)"
+                              (click)="toggleOtherObjectLabel(area.id)">
+                              <span class="se-course-object-label se-course-object-label--icon-only">
+                                <svg viewBox="0 0 32 32" class="se-course-object-icon" aria-hidden="true">
+                                  <path d="m16 7 2.5 5.3L24 14l-4 3.9.9 5.6-4.9-2.7-4.9 2.7.9-5.6L8 14l5.5-1.7Z" />
+                                </svg>
+                              </span>
+                            </button>
+                          } @else {
+                          <div
+                            xmlns="http://www.w3.org/1999/xhtml"
+                            class="se-course-object-label"
+                            [style.--se-object-fill]="getObjectToolFill(area.kind)"
+                            [style.--se-object-stroke]="getObjectToolStroke(area.kind)"
+                            [class.se-course-object-label--icon-only]="isIconOnlyObject(area.kind)">
+                            @switch (area.kind) {
+                              @case ('land') {
+                                <svg viewBox="0 0 32 32" class="se-course-object-icon" aria-hidden="true">
+                                  <path d="M5 19c3 0 3-3 6-3s3 3 6 3 3-3 6-3 3 3 4 3" />
+                                </svg>
+                              }
+                              @case ('berg') {
+                                <svg viewBox="0 0 32 32" class="se-course-object-icon" aria-hidden="true">
+                                  <path d="M6 22 14 11l4 5 3-4 5 10Z" />
+                                </svg>
+                              }
+                              @case ('hochhaus') {
+                                <svg viewBox="0 0 32 32" class="se-course-object-icon" aria-hidden="true">
+                                  <path d="M9 23V11l7-3v15M16 23V6l7 3v14M12 14h2m-2 4h2m5-6h2m-2 4h2m-7 2h2m5 0h2" />
+                                </svg>
+                              }
+                              @case ('wolke') {
+                                <svg viewBox="0 0 32 32" class="se-course-object-icon" aria-hidden="true">
+                                  <path d="M10 22h11a4 4 0 0 0 .5-8A6 6 0 0 0 10 13a4.5 4.5 0 0 0 0 9Z" />
+                                </svg>
+                              }
+                              @case ('boe') {
+                                <svg viewBox="0 0 32 32" class="se-course-object-icon" aria-hidden="true">
+                                  <path d="M6 12h13c2.5 0 3.5-1.5 3.5-3S21.5 6 20 6c-1.1 0-2 .4-2.7 1.1M5 18h17c1.8 0 3 1.1 3 2.5S23.8 23 22 23c-.9 0-1.8-.3-2.3-.8M8 24h10" />
+                                </svg>
+                              }
+                              @default {
+                                <svg viewBox="0 0 32 32" class="se-course-object-icon" aria-hidden="true">
+                                  <path d="m16 7 2.5 5.3L24 14l-4 3.9.9 5.6-4.9-2.7-4.9 2.7.9-5.6L8 14l5.5-1.7Z" />
+                                </svg>
+                              }
+                            }
+                          </div>
+                          }
+                        </foreignObject>
+                        @if (shouldShowOtherObjectLabel(area)) {
+                          <foreignObject
+                            [attr.x]="area.center.x - 46"
+                            [attr.y]="area.center.y + 18"
+                            width="92"
+                            height="32"
+                            class="se-course-object-name-fo">
+                            <div xmlns="http://www.w3.org/1999/xhtml" class="se-course-object-name">
+                              {{ area.label }}
+                            </div>
+                          </foreignObject>
+                        }
+                      </g>
+                    }
+
+                    @for (note of displayedRaceNotes; track note.id) {
+                      <g
+                        class="se-course-note-marker"
+                        [class.se-course-note-marker--maneuver]="isManeuverRaceNote(note)"
+                        [class.se-course-note-marker--active]="shouldShowRaceNoteText(note)"
+                        (click)="toggleRaceNote(note.id)">
+                        <circle [attr.cx]="note.x" [attr.cy]="note.y" r="11" class="se-course-note-icon-bg" />
+                        @if (isStartRaceNote(note)) {
+                          <path
+                            [attr.d]="'M ' + (note.x - 3.5) + ' ' + (note.y - 5) + ' L ' + (note.x + 4.5) + ' ' + note.y + ' L ' + (note.x - 3.5) + ' ' + (note.y + 5) + ' Z'"
+                            class="se-course-note-icon-fill"
+                          />
+                        } @else if (isFinishRaceNote(note)) {
+                          <line [attr.x1]="note.x - 3.5" [attr.y1]="note.y + 5" [attr.x2]="note.x - 3.5" [attr.y2]="note.y - 5" class="se-course-note-icon-path" />
+                          <path
+                            [attr.d]="'M ' + (note.x - 2.5) + ' ' + (note.y - 4.5) + ' C ' + note.x + ' ' + (note.y - 5.5) + ', ' + (note.x + 1.5) + ' ' + (note.y - 1.5) + ', ' + (note.x - 1) + ' ' + note.y"
+                            class="se-course-note-icon-path"
+                          />
+                          <path
+                            [attr.d]="'M ' + (note.x - 2.5) + ' ' + note.y + ' C ' + note.x + ' ' + (note.y - 1) + ', ' + (note.x + 1.5) + ' ' + (note.y + 3) + ', ' + (note.x - 1) + ' ' + (note.y + 4.5)"
+                            class="se-course-note-icon-path"
+                          />
+                        } @else if (isManeuverRaceNote(note)) {
+                          <path
+                            [attr.d]="'M ' + (note.x - 5) + ' ' + (note.y + 1) + ' C ' + (note.x - 7) + ' ' + (note.y - 6) + ', ' + (note.x + 1) + ' ' + (note.y - 8) + ', ' + (note.x + 5) + ' ' + (note.y - 4)"
+                            class="se-course-note-icon-path"
+                          />
+                          <path
+                            [attr.d]="'M ' + (note.x + 1) + ' ' + (note.y - 7) + ' L ' + (note.x + 5) + ' ' + (note.y - 4) + ' L ' + (note.x + 1) + ' ' + (note.y - 2)"
+                            class="se-course-note-icon-path"
+                          />
+                        } @else {
+                          <rect [attr.x]="note.x - 5.5" [attr.y]="note.y - 4.5" width="11" height="9" rx="2.5" class="se-course-note-icon-note" />
+                          <line [attr.x1]="note.x - 3.5" [attr.y1]="note.y - 1.5" [attr.x2]="note.x + 3.5" [attr.y2]="note.y - 1.5" class="se-course-note-icon-line" />
+                          <line [attr.x1]="note.x - 3.5" [attr.y1]="note.y + 1.5" [attr.x2]="note.x + 1.5" [attr.y2]="note.y + 1.5" class="se-course-note-icon-line" />
+                        }
+                      </g>
+
+                      @if (shouldShowRaceNoteText(note)) {
+                        <foreignObject
+                          [attr.x]="getRaceNoteLabelX(note)"
+                          [attr.y]="getRaceNoteLabelY(note)"
+                          [attr.width]="getRaceNoteLabelWidth(note)"
+                          height="42"
+                          class="se-course-note-fo">
+                          <div
+                            xmlns="http://www.w3.org/1999/xhtml"
+                            class="se-course-note-card"
+                            [class.se-course-note-card--reveal]="isRaceNotePlaybackReveal(note)">
+                            <span
+                              class="se-course-note-text"
+                              [class.se-course-note-text--reveal]="isRaceNotePlaybackReveal(note)">
+                              {{ getRaceNoteVisibleText(note) }}
+                            </span>
+                          </div>
+                        </foreignObject>
+                      }
+                    }
+                    </g>
+
+                    <rect
+                      class="se-course-element-drag-layer"
+                      x="0"
+                      y="0"
+                      width="260"
+                      height="280"
+                      class="se-course-drag-layer se-course-drag-layer--custom-builder"
+                      (touchstart)="onCoursePinchStart($event)"
+                      (touchmove)="onCoursePinchMove($event)"
+                      (touchend)="onCoursePinchEnd($event)"
+                      (touchcancel)="onCoursePinchEnd($event)"
+                      [style.pointer-events]="customCoursePlacementTool && !playbackRace && !raceIsActive && !isObjectDrawingMode ? 'auto' : 'none'"
+                      (pointerdown)="onCustomCourseCanvasPointerDown($event)"
+                    />
+
+                    <rect
+                      x="0"
+                      y="0"
+                      width="260"
+                      height="280"
+                      class="se-course-drag-layer"
+                      [style.pointer-events]="'none'"
+                    />
+
+                    <rect
+                      x="0"
+                      y="0"
+                      width="260"
+                      height="280"
+                      fill="transparent"
+                      [style.pointer-events]="hasActiveCourseElementInteraction ? 'auto' : 'none'"
+                      (pointermove)="onCourseElementPointerMove($event)"
+                      (pointerup)="onCourseElementPointerUp($event)"
+                      (pointercancel)="onCourseElementPointerUp($event)"
+                    />
+
+                    <rect
+                      x="0"
+                      y="0"
+                      width="260"
+                      height="280"
+                      class="se-course-drag-layer"
+                      [style.pointer-events]="isDragDriveMode && (raceIsActive || startPositionSelectionActive) && !playbackRace && !customCoursePlacementTool && !isObjectDrawingMode ? 'auto' : 'none'"
+                      (pointerdown)="onCustomSailPointerDown($event)"
+                      (pointermove)="onCustomSailPointerMove($event)"
+                      (pointerup)="onCustomSailPointerUp($event)"
+                      (pointercancel)="onCustomSailPointerUp($event)"
+                    />
+
+                    @if (showCustomSail) {
+                      <image
+                        [attr.href]="severneSailImageUrl"
+                        [attr.x]="customSailX"
+                        [attr.y]="customSailY"
+                        [attr.width]="displayCourseSailWidth"
+                        [attr.height]="displayCourseSailHeight"
+                        [attr.transform]="customSailTransform"
+                        preserveAspectRatio="xMidYMid meet"
+                        class="se-course-sail"
+                      />
+                    }
+                  </svg>
+                </div>
+
+                @if (finishConfirmOpen && !playbackRace) {
+                  <div class="se-race-finish-confirm">
+                    <p class="se-race-finish-eyebrow">Race beenden</p>
+                    <p class="se-race-finish-title">Rennen wirklich beenden?</p>
+                    <input
+                      class="sa-input se-race-assign-input"
+                      [ngModel]="racePlacementDraft"
+                      (ngModelChange)="racePlacementDraft = sanitizePositiveIntegerInput($event)"
+                      type="number"
+                      inputmode="numeric"
+                      min="1"
+                      step="1"
+                      pattern="[0-9]*"
+                      placeholder="Platzierung (optional)"
+                    />
+                    <div class="se-race-note-actions">
+                      <button class="sd-confirm-cancel se-race-note-btn" (click)="cancelRaceFinish()">Abbrechen</button>
+                      <button class="sd-confirm-edit se-race-note-btn" (click)="confirmRaceFinish()">Beenden</button>
+                    </div>
+                  </div>
+                }
+
+                @if (confirmMergeStartFinishOpen) {
+                  <div class="se-race-finish-confirm se-race-finish-confirm--merge">
+                    <p class="se-race-finish-eyebrow">Start/Ziel</p>
+                    <p class="se-race-finish-title">Start und Ziel verschmelzen?</p>
+                    <div class="se-race-note-actions">
+                      <button class="sd-confirm-cancel se-race-note-btn" (click)="cancelMergeStartFinish()">Nein</button>
+                      <button class="sd-confirm-edit se-race-note-btn" (click)="confirmMergeStartFinish()">Ja</button>
+                    </div>
+                  </div>
+                }
+
+                @if (isJoystickDriveMode && raceIsActive && !playbackRace && !isObjectDrawingMode) {
+                  <div class="se-course-drive-ui">
+                    <div
+                      class="se-joystick-pad se-joystick-pad--overlay"
+                      (pointerdown)="onControlJoystickPointerDown($event)"
+                      (pointermove)="onControlJoystickPointerMove($event)"
+                      (pointerup)="onControlJoystickPointerUp($event)"
+                      (pointercancel)="onControlJoystickPointerUp($event)">
+                      <div class="se-joystick-base"></div>
+                      <div class="se-joystick-knob" [style.left.px]="joystickKnobX" [style.top.px]="joystickKnobY"></div>
+                    </div>
+
+                    <div class="se-course-speed-control">
+                      <input
+                        class="se-course-speed-slider"
+                        type="range"
+                        min="1"
+                        max="200"
+                        [ngModel]="driveSpeedPercent"
+                        (ngModelChange)="setDriveSpeedPercent($event)"
+                        aria-label="Geschwindigkeit" />
+                      <span class="se-course-speed-label">{{ driveSpeedPercent }}%</span>
+                    </div>
+
+                    <div class="se-course-drive-actions">
+                      <button class="app-btn-surface se-course-drive-action" type="button" aria-label="Wende oder Halse" (click)="addAutoDetectedManeuverComment()">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M7 17c0-4.4 2.9-7.2 7.6-7.2H18" />
+                          <path d="M15 6.5 18 9.8 15 13" />
+                        </svg>
+                      </button>
+                      <button class="app-btn-surface se-course-drive-action" type="button" aria-label="Kommentar" (click)="toggleRaceCommentPopup()">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M5 6.5h14v9H9.2L5 18.8Z" />
+                          <path d="M8.5 10h7" />
+                          <path d="M8.5 13h4.8" />
+                        </svg>
+                      </button>
+                      <button class="app-btn-surface se-course-drive-action" type="button" aria-label="Mikrofon" (click)="triggerRaceVoiceComment()">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <rect x="9" y="4.5" width="6" height="10" rx="3" />
+                          <path d="M6.5 11.5c0 3 2.2 5.3 5.5 5.3s5.5-2.3 5.5-5.3" />
+                          <path d="M12 16.8V20" />
+                          <path d="M9 20h6" />
+                        </svg>
+                      </button>
+                    </div>
+
+                    @if (raceCommentPopupOpen) {
+                      <div class="se-course-comment-popup">
+                        <textarea
+                          class="sa-input se-race-note-input se-course-comment-popup-input"
+                          [(ngModel)]="raceNoteDraft"
+                          placeholder="Kommentar..."
+                          [rows]="raceNoteRows"
+                        ></textarea>
+                        <div class="se-race-note-actions">
+                          <button class="sd-confirm-cancel se-race-note-btn" type="button" (click)="closeRaceCommentPopup()">Abbrechen</button>
+                          <button class="sd-confirm-edit se-race-note-btn" type="button" [disabled]="!raceNoteDraft.trim()" (click)="submitManualRaceComment()">Speichern</button>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+
+              </div>
+
+              @if (showRaceAction && !replayViewRequested && !playbackRace) {
+                <div class="se-course-actions" [class.se-course-actions--active-race]="raceIsActive">
+                  <button class="app-btn-surface se-race-action-btn" [class.se-race-action-btn--primary]="!raceIsActive" [class.btn-danger-pill]="raceIsActive" (click)="toggleRaceState()">
+                    {{ raceActionLabel }}
+                  </button>
+                </div>
+              }
+
+              @if (confirmCustomCourseClearOpen) {
+                <div class="sd-confirm-overlay" (click)="cancelCustomCourseClear()">
+                  <div class="sd-confirm-box" (click)="$event.stopPropagation()">
+                    <p class="sd-confirm-text">Wirklich den ganzen Kurs löschen?</p>
+                    <div class="sd-confirm-btns">
+                      <button class="sd-confirm-cancel" type="button" (click)="cancelCustomCourseClear()">Abbrechen</button>
+                      <button class="sd-confirm-delete" type="button" (click)="confirmCustomCourseClear()">Alles löschen</button>
+                    </div>
+                  </div>
+                </div>
+              }
+
+              @if (confirmCustomCourseMarkerDeleteId) {
+                <div class="sd-confirm-overlay" (click)="cancelCustomCourseMarkerDelete()">
+                  <div class="sd-confirm-box" (click)="$event.stopPropagation()">
+                    <p class="sd-confirm-text">Dieses Element wirklich löschen?</p>
+                    <div class="sd-confirm-btns">
+                      <button class="sd-confirm-cancel" type="button" (click)="cancelCustomCourseMarkerDelete()">Abbrechen</button>
+                      <button class="sd-confirm-delete" type="button" (click)="confirmCustomCourseMarkerDelete()">Löschen</button>
+                    </div>
+                  </div>
+                </div>
+              }
+
+              @if (confirmCustomCourseLineDeleteKind) {
+                <div class="sd-confirm-overlay" (click)="cancelCustomCourseLineDelete()">
+                  <div class="sd-confirm-box" (click)="$event.stopPropagation()">
+                    <p class="sd-confirm-text">Dieses Element wird komplett aus dem Kurs entfernt.</p>
+                    <div class="sd-confirm-btns">
+                      <button class="sd-confirm-cancel" type="button" (click)="cancelCustomCourseLineDelete()">Abbrechen</button>
+                      <button class="sd-confirm-delete" type="button" (click)="confirmCustomCourseLineDelete()">Löschen</button>
+                    </div>
+                  </div>
+                </div>
+              }
+
+            </section>
+          }
+        </main>
+        <app-nav [forceAnalysisActive]="replayViewRequested || !!playbackRace" />
+      </div>
+    </div>
+  }
+
+  @if (!raceReflectionOpen) {
+    <app-nav />
+  }
+</div>

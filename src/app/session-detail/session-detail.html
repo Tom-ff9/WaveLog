@@ -1,0 +1,215 @@
+<div class="page">
+  <header class="page-header">
+    <button class="back-btn" (click)="goBack()" aria-label="Zurück">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+    </button>
+    <h1>Session</h1>
+    <div class="sd-header-actions">
+      <button class="sd-header-btn" (click)="confirmEdit = true" aria-label="Session bearbeiten">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+      </button>
+      <button class="sd-header-btn" (click)="confirmDelete = true" aria-label="Session löschen">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  @if (confirmEdit) {
+    <div class="sd-confirm-overlay" (click)="confirmEdit = false">
+      <div class="sd-confirm-box" (click)="$event.stopPropagation()">
+        <p class="sd-confirm-text">Session wirklich bearbeiten?</p>
+        <div class="sd-confirm-btns">
+          <button class="sd-confirm-cancel" (click)="confirmEdit = false">Abbrechen</button>
+          <button class="sd-confirm-edit" (click)="editSession()">Bearbeiten</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (confirmDelete) {
+    <div class="sd-confirm-overlay" (click)="confirmDelete = false">
+      <div class="sd-confirm-box" (click)="$event.stopPropagation()">
+        <p class="sd-confirm-text">Session wirklich löschen?</p>
+        <div class="sd-confirm-btns">
+          <button class="sd-confirm-cancel" (click)="confirmDelete = false">Abbrechen</button>
+          <button class="sd-confirm-delete" (click)="deleteSession()">Löschen</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <main class="page-content">
+    @if (session) {
+
+      <!-- Session Info -->
+      <div class="sd-section">
+        <h2 class="sd-section-title">Session Info</h2>
+        <div class="sd-grid">
+          <div class="sd-item">
+            <span class="sd-label">Datum</span>
+            <span class="sd-value">{{ session.startTime | date:'dd.MM.yyyy' }}</span>
+          </div>
+          <div class="sd-item">
+            <span class="sd-label">Ort</span>
+            <span class="sd-value">{{ session.spot || '—' }}</span>
+          </div>
+          <div class="sd-item">
+            <span class="sd-label">Start</span>
+            <span class="sd-value">{{ session.startTime | date:'HH:mm' }}</span>
+          </div>
+          <div class="sd-item">
+            <span class="sd-label">Ende</span>
+            <span class="sd-value">{{ session.endTime ? (session.endTime | date:'HH:mm') : '—' }}</span>
+          </div>
+          <div class="sd-item sd-item--full">
+            <span class="sd-label">Dauer</span>
+            <span class="sd-value">{{ getDuration() }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Trainingsinhalte -->
+      @if (session.trainingContents?.length) {
+        <div class="sd-section">
+          <h2 class="sd-section-title">Trainingsinhalte</h2>
+          <div class="sd-tags">
+            @for (content of session.trainingContents; track content.name) {
+              <div class="sd-tag-group">
+                <span class="sd-tag sd-tag--main">{{ content.name }}</span>
+                @for (sub of content.subSelections; track sub) {
+                  <span class="sd-tag sd-tag--sub">{{ sub }}</span>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Wind -->
+      <div class="sd-section">
+        <h2 class="sd-section-title">Wind</h2>
+        <div class="sd-grid">
+          @if (session.windSpeed) {
+            <div class="sd-item">
+              <span class="sd-label">Grundwind</span>
+              <span class="sd-value">{{ session.windSpeed }} kts</span>
+            </div>
+          }
+          @if (session.gustWind) {
+            <div class="sd-item">
+              <span class="sd-label">Böen</span>
+              <span class="sd-value">{{ session.gustWind }} kts</span>
+            </div>
+          } @else if (session.windSpeedFelt) {
+            <div class="sd-item">
+              <span class="sd-label">Gefühlt</span>
+              <span class="sd-value">{{ session.windSpeedFelt }} kts</span>
+            </div>
+          }
+          @if (session.windCharacter) {
+            <div class="sd-item">
+              <span class="sd-label">Charakter</span>
+              <span class="sd-value">{{ session.windCharacter }}</span>
+            </div>
+          }
+          @if (session.windDreher) {
+            <div class="sd-item sd-item--full">
+              <span class="sd-label">Winddreher</span>
+              <span class="sd-value">{{ session.windDreher }}</span>
+            </div>
+          }
+          @if (session.windRating) {
+            <div class="sd-item">
+              <span class="sd-label">Windbewertung</span>
+              <span class="sd-value sd-value--emoji">{{ getEmoji(session.windRating) }}</span>
+            </div>
+          }
+          @if (session.trimm?.wellenGefuehlt) {
+            <div class="sd-item">
+              <span class="sd-label">Wellen</span>
+              <span class="sd-value">{{ session.trimm!.wellenGefuehlt }}/5</span>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Material -->
+      <div class="sd-section">
+        <h2 class="sd-section-title">Material</h2>
+        <div class="sd-grid">
+          @if (session.foilRake != null) {
+            <div class="sd-item">
+              <span class="sd-label">Foil Rake</span>
+              <span class="sd-value">{{ session.foilRake }}°</span>
+            </div>
+          }
+          @if (session.backwingspacer !== undefined) {
+            <div class="sd-item">
+              <span class="sd-label">Backwingspacer</span>
+              <span class="sd-value">{{ session.backwingspacer === 0 ? '0' : '+' + session.backwingspacer }}</span>
+            </div>
+          }
+          @if (session.materialSetupSatisfied !== undefined) {
+            <div class="sd-item">
+              <span class="sd-label">Setup</span>
+              <span class="sd-value">{{ session.materialSetupSatisfied ? 'Zufrieden ✓' : 'Unzufrieden' }}</span>
+            </div>
+          }
+          @if (session.trimm) {
+            <div class="sd-item">
+              <span class="sd-label">Luisleage</span>
+              <span class="sd-value">{{ session.trimm.luisleage }}</span>
+            </div>
+            <div class="sd-item">
+              <span class="sd-label">Mastfuß</span>
+              <span class="sd-value">{{ getMastLabel(session.trimm.mastPosition) }}</span>
+            </div>
+          }
+        </div>
+        @if (session.materialSetupSatisfied === false && session.materialSetupReasons?.length) {
+          <div class="sd-tags sd-tags--mt">
+            @for (reason of session.materialSetupReasons; track reason) {
+              <span class="sd-tag sd-tag--reason">{{ reason }}</span>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Stimmung -->
+      <div class="sd-section">
+        <h2 class="sd-section-title">Stimmung</h2>
+        <div class="sd-grid">
+          @if (session.sessionRating) {
+            <div class="sd-item">
+              <span class="sd-label">Session</span>
+              <span class="sd-value">{{ session.sessionRating }}/10</span>
+            </div>
+          }
+          @if (session.energyLevel) {
+            <div class="sd-item">
+              <span class="sd-label">Energielevel</span>
+              <span class="sd-value">{{ session.energyLevel }}/10</span>
+            </div>
+          }
+        </div>
+      </div>
+
+      @if (session.description) {
+        <div class="sd-section">
+          <h2 class="sd-section-title">Notiz</h2>
+          <p class="sd-note">{{ session.description }}</p>
+        </div>
+      }
+
+    }
+  </main>
+
+  <app-nav />
+</div>

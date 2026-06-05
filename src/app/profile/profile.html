@@ -1,0 +1,102 @@
+<div class="profile-overlay" (click)="cancel()">
+  <div class="profile-drawer" (click)="$event.stopPropagation()">
+    <div class="profile-drawer-header">
+      <button class="profile-drawer-close" type="button" (click)="cancel()" aria-label="Profil schließen">✕</button>
+      <h2 class="profile-drawer-title">Profil</h2>
+      <span class="profile-drawer-spacer" aria-hidden="true"></span>
+    </div>
+
+    <div class="profile-drawer-actions">
+      <button class="app-btn-surface theme-switch" type="button" (click)="toggleTheme()">
+        <span class="theme-switch-copy">
+          <strong>{{ theme === 'dark' ? 'Darkmode' : 'Lightmode' }}</strong>
+          <small>{{ theme === 'dark' ? 'Dunkles Layout aktiv' : 'Helles Layout aktiv' }}</small>
+        </span>
+        <span class="theme-switch-track" [class.theme-switch-track--light]="theme === 'light'">
+          <span class="theme-switch-thumb"></span>
+        </span>
+      </button>
+
+      <button class="app-btn-surface profile-drawer-btn" type="button" (click)="backupPlaceholder()">
+        Backup erstellen
+      </button>
+
+      <button class="app-btn-surface profile-drawer-btn" type="button" (click)="openPersonalData()">
+        Persönliche Daten
+      </button>
+    </div>
+  </div>
+</div>
+
+@if (personalDataOpen) {
+  <div class="profile-detail-overlay" (click)="closePersonalData()">
+    <div class="profile-modal" (click)="$event.stopPropagation()">
+      <div class="profile-modal-header">
+        <h2 class="profile-modal-title">Persönliche Daten</h2>
+        <button class="profile-modal-close" type="button" (click)="closePersonalData()">✕</button>
+      </div>
+
+      <div class="profile-modal-body">
+        <div class="profile-row">
+          <div class="profile-field">
+            <label class="profile-label">Vorname</label>
+            <input type="text" class="profile-input" [(ngModel)]="firstName" placeholder="Vorname" />
+          </div>
+          <div class="profile-field">
+            <label class="profile-label">Nachname</label>
+            <input type="text" class="profile-input" [(ngModel)]="lastName" placeholder="Nachname" />
+          </div>
+        </div>
+
+        <div class="profile-field profile-field--full">
+          <label class="profile-label">Gewicht</label>
+          <input type="number" class="profile-input" [(ngModel)]="weight" placeholder="Gewicht (kg)" step="0.1" />
+        </div>
+
+        <div class="profile-field profile-field--full">
+          <label class="profile-label">Klasse</label>
+          <button class="profile-class-btn" type="button" (click)="showClassPicker = !showClassPicker">
+            <span>{{ racingClass ?? 'Klasse wählen' }}</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          @if (showClassPicker) {
+            <div class="profile-class-list">
+              @for (cls of allClasses; track cls) {
+                <button
+                  class="profile-class-option"
+                  [class.profile-class-option--active]="racingClass === cls"
+                  (click)="selectClass(cls)">
+                  {{ cls }}
+                </button>
+              }
+            </div>
+          }
+        </div>
+
+        <div class="profile-row">
+          <div class="profile-field">
+            <label class="profile-label">Frontwing</label>
+            <input type="text" class="profile-input" [(ngModel)]="frontwing" placeholder="Frontwing" />
+          </div>
+          <div class="profile-field">
+            <label class="profile-label">Gabel</label>
+            <input type="text" class="profile-input" [(ngModel)]="gabel" placeholder="Gabel" />
+          </div>
+        </div>
+
+        <div class="profile-row">
+          <div class="profile-field">
+            <label class="profile-label">Segel</label>
+            <input type="text" class="profile-input" [(ngModel)]="segel" placeholder="Segel" />
+          </div>
+          <div class="profile-field">
+            <label class="profile-label">Board</label>
+            <input type="text" class="profile-input" [(ngModel)]="board" placeholder="Board" />
+          </div>
+        </div>
+      </div>
+
+      <button class="app-btn-primary profile-save-btn" type="button" (click)="saveProfile()">Speichern</button>
+    </div>
+  </div>
+}

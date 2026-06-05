@@ -1,0 +1,41 @@
+<nav class="bottom-nav">
+  <a
+    routerLink="/home"
+    routerLinkActive="active"
+    class="nav-item"
+    [class.active]="isHomeActive()"
+    [style.color]="isHomeActive() ? '#fff' : null">
+    <span class="nav-icon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+      </svg>
+    </span>
+    <span>Home</span>
+  </a>
+
+  <button class="nav-item nav-item-primary" (click)="startSession()">
+    <span class="nav-icon">
+      <svg width="36" height="36" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="11" fill="#8a0000" stroke="#CC0000" stroke-width="1.5"/>
+        <polygon points="10,8 17,12 10,16" fill="#fff"/>
+      </svg>
+    </span>
+    <span>Session erfassen</span>
+  </button>
+
+  <a
+    routerLink="/auswertung"
+    routerLinkActive="active"
+    class="nav-item"
+    [class.active]="isAnalysisActive()"
+    [style.color]="isAnalysisActive() ? '#fff' : null">
+    <span class="nav-icon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+        <rect x="3" y="12" width="4" height="9" rx="1"/>
+        <rect x="10" y="7" width="4" height="14" rx="1"/>
+        <rect x="17" y="3" width="4" height="18" rx="1"/>
+      </svg>
+    </span>
+    <span>Analyse</span>
+  </a>
+</nav>

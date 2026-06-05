@@ -1,0 +1,142 @@
+<div [class]="embedded ? '' : 'page'">
+  @if (!embedded) {
+    <header class="page-header">
+      <h1 class="lrn-title">Learnings</h1>
+    </header>
+  }
+
+  <main [class]="embedded ? '' : 'page-content'">
+
+    <div class="lrn-list">
+      @for (cat of uiCats; track cat.name) {
+        <div class="lrn-cat" [class.lrn-cat--open]="cat.expanded">
+
+          <!-- Category header -->
+          <div class="lrn-cat-header-row">
+            <button class="lrn-cat-header" (click)="toggleCat(cat)">
+              <span class="lrn-cat-name">{{ cat.name }}</span>
+              <span class="lrn-cat-count">({{ countFor(cat.name) }})</span>
+              <svg class="lrn-chevron" [class.lrn-chevron--up]="cat.expanded"
+                width="20" height="20" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+            @if (cat.isCustom) {
+              <button class="lrn-cat-delete" (click)="requestDeleteCategory(cat)" aria-label="Kategorie löschen">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                </svg>
+              </button>
+            }
+          </div>
+
+          <!-- Expanded body -->
+          @if (cat.expanded) {
+            <div class="lrn-cat-body">
+
+              @if (cat.subs.length === 0) {
+                @if (entriesFor(cat.name).length > 0) {
+                  <div class="lrn-entries-box">
+                    @for (entry of entriesFor(cat.name); track entry.id) {
+                      <div class="lrn-entry">
+                        <span (click)="requestEditEntry(entry)">{{ entry.text }}</span>
+                        <button class="lrn-delete" (click)="requestDeleteEntry(entry.id)">✕</button>
+                      </div>
+                    }
+                  </div>
+                }
+                <div class="lrn-input-row">
+                  <input
+                    class="lrn-input"
+                    [(ngModel)]="cat.newText"
+                    (keydown)="onKeydown($event, cat)"
+                    placeholder="Neues Learning hinzufügen"
+                  />
+                  <button class="lrn-add-btn" (click)="addEntry(cat)">+</button>
+                </div>
+
+              } @else {
+                @for (sub of cat.subs; track sub) {
+                  <div class="lrn-sub">
+                    <p class="lrn-sub-title">{{ sub }}</p>
+                    @if (entriesFor(cat.name, sub).length > 0) {
+                      <div class="lrn-entries-box">
+                        @for (entry of entriesFor(cat.name, sub); track entry.id) {
+                          <div class="lrn-entry">
+                            <span (click)="requestEditEntry(entry)">{{ entry.text }}</span>
+                            <button class="lrn-delete" (click)="requestDeleteEntry(entry.id)">✕</button>
+                          </div>
+                        }
+                      </div>
+                    }
+                    <div class="lrn-input-row">
+                      <input
+                        class="lrn-input"
+                        [(ngModel)]="cat.subInputs[sub]"
+                        (keydown)="onKeydown($event, cat, sub)"
+                        placeholder="Neues Learning hinzufügen"
+                      />
+                      <button class="lrn-add-btn" (click)="addEntry(cat, sub)">+</button>
+                    </div>
+                  </div>
+                }
+              }
+
+            </div>
+          }
+
+        </div>
+      }
+    </div>
+
+    <!-- Add new category -->
+    <div class="lrn-new-cat">
+      <input
+        class="lrn-new-cat-input"
+        [(ngModel)]="newCatName"
+        (keydown)="addCatKeydown($event)"
+        placeholder="Kategoriename"
+      />
+      <button class="lrn-new-cat-btn" (click)="addCategory()">Hinzufügen</button>
+    </div>
+
+  </main>
+
+  <!-- Edit entry overlay -->
+  @if (editingEntry) {
+    <div class="lrn-confirm-overlay" (click)="cancelEdit()">
+      <div class="lrn-confirm-box" (click)="$event.stopPropagation()">
+        <p class="lrn-confirm-text">Learning bearbeiten</p>
+        <textarea class="lrn-edit-input" [(ngModel)]="editText" rows="3"></textarea>
+        <div class="lrn-confirm-btns">
+          <button class="lrn-confirm-cancel" (click)="cancelEdit()">Abbrechen</button>
+          <button class="lrn-confirm-save" (click)="confirmEdit()">Speichern</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Confirm delete overlay -->
+  @if (pendingDeleteCat || pendingDeleteEntry) {
+    <div class="lrn-confirm-overlay" (click)="cancelDelete()">
+      <div class="lrn-confirm-box" (click)="$event.stopPropagation()">
+        <p class="lrn-confirm-text">
+          @if (pendingDeleteCat) {
+            Kategorie "{{ pendingDeleteCat.name }}" löschen?
+          } @else {
+            Learning wirklich löschen?
+          }
+        </p>
+        <div class="lrn-confirm-btns">
+          <button class="lrn-confirm-cancel" (click)="cancelDelete()">Abbrechen</button>
+          <button class="lrn-confirm-delete" (click)="confirmDelete()">Löschen</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (!embedded) {
+    <app-nav />
+  }
+</div>
