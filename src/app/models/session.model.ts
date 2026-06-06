@@ -88,7 +88,10 @@ export interface CustomCourseMarker {
   label: string;
   kind: 'mark' | 'gate';
   groupId?: string;
+  color?: CourseMarkerColor;
 }
+
+export type CourseMarkerColor = 'black' | 'white' | 'blue' | 'yellow' | 'orange' | 'green';
 
 export interface CustomCourseDefinition {
   id: string;

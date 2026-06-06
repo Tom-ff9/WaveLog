@@ -845,7 +845,7 @@
                       class="app-btn-surface se-custom-course-tool se-custom-course-tool--icon"
                       type="button"
                       aria-label="Kurs leeren"
-                      (click)="openStandardCourseClearConfirm()">
+                      (click)="clearStandardCourseElements()">
                       <svg viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M5 7h14" />
                         <path d="M9 7V5.4c0-.8.6-1.4 1.4-1.4h3.2c.8 0 1.4.6 1.4 1.4V7" />
@@ -948,26 +948,26 @@
                     <line x1="74" y1="46" x2="74" y2="104" class="se-course-wind-arrow" />
                     <polyline points="62,90 74,104 86,90" class="se-course-wind-arrow-head" />
                     @if (selectedCourseStartLine; as startLine) {
-                      <g (click)="promptStandardCourseLineDelete('start', $event)">
-                        <line [attr.x1]="startLine.boat.x" [attr.y1]="startLine.boat.y" [attr.x2]="startLine.pin.x" [attr.y2]="startLine.pin.y" class="se-course-line se-course-line--start" />
+                      <g>
+                        <line [attr.x1]="startLine.boat.x" [attr.y1]="startLine.boat.y" [attr.x2]="startLine.pin.x" [attr.y2]="startLine.pin.y" class="se-course-line se-course-line--start" [class.se-course-line--selected]="isSelectedLine('standard', 'start')" />
                         <text [attr.x]="getCourseLineLabelX(startLine)" [attr.y]="getCourseLineLabelY(startLine)" class="se-course-small-label se-course-small-label--start">{{ getStartLineDisplayLabel() }}</text>
                       </g>
-                      <rect [attr.x]="startLine.boat.x - 12" [attr.y]="startLine.boat.y - 10" width="24" height="18" rx="5" class="se-course-boat-block" (pointerdown)="beginCourseElementInteraction($event, 'standard', 'start-boat')" />
-                      <circle [attr.cx]="startLine.pin.x" [attr.cy]="startLine.pin.y" r="10" class="se-course-mark se-course-mark--start" (pointerdown)="beginCourseElementInteraction($event, 'standard', 'start-pin')" />
+                      <rect [attr.x]="startLine.boat.x - 12" [attr.y]="startLine.boat.y - 10" width="24" height="18" rx="5" class="se-course-boat-block" [class.se-course-boat-block--selected]="isSelectedLine('standard', 'start')" (pointerdown)="beginCourseElementInteraction($event, 'standard', 'start-boat')" />
+                      <circle [attr.cx]="startLine.pin.x" [attr.cy]="startLine.pin.y" r="10" class="se-course-mark se-course-mark--start" [class.se-course-mark--selected]="isSelectedLine('standard', 'start')" (pointerdown)="beginCourseElementInteraction($event, 'standard', 'start-pin')" />
                     }
                     @if (showSeparateFinishLine && selectedCourseFinishLine; as finishLine) {
-                      <g (click)="promptStandardCourseLineDelete('finish', $event)">
-                        <line [attr.x1]="finishLine.boat.x" [attr.y1]="finishLine.boat.y" [attr.x2]="finishLine.pin.x" [attr.y2]="finishLine.pin.y" class="se-course-line se-course-line--finish" />
+                      <g>
+                        <line [attr.x1]="finishLine.boat.x" [attr.y1]="finishLine.boat.y" [attr.x2]="finishLine.pin.x" [attr.y2]="finishLine.pin.y" class="se-course-line se-course-line--finish" [class.se-course-line--selected]="isSelectedLine('standard', 'finish')" />
                         <text [attr.x]="getCourseLineLabelX(finishLine)" [attr.y]="getCourseLineLabelY(finishLine)" class="se-course-small-label se-course-small-label--start">Ziel</text>
                       </g>
-                      <rect [attr.x]="finishLine.boat.x - 12" [attr.y]="finishLine.boat.y - 10" width="24" height="18" rx="5" class="se-course-boat-block" (pointerdown)="beginCourseElementInteraction($event, 'standard', 'finish-boat')" />
-                      <circle [attr.cx]="finishLine.pin.x" [attr.cy]="finishLine.pin.y" r="10" class="se-course-mark se-course-mark--finish" (pointerdown)="beginCourseElementInteraction($event, 'standard', 'finish-pin')" />
+                      <rect [attr.x]="finishLine.boat.x - 12" [attr.y]="finishLine.boat.y - 10" width="24" height="18" rx="5" class="se-course-boat-block" [class.se-course-boat-block--selected]="isSelectedLine('standard', 'finish')" (pointerdown)="beginCourseElementInteraction($event, 'standard', 'finish-boat')" />
+                      <circle [attr.cx]="finishLine.pin.x" [attr.cy]="finishLine.pin.y" r="10" class="se-course-mark se-course-mark--finish" [class.se-course-mark--selected]="isSelectedLine('standard', 'finish')" (pointerdown)="beginCourseElementInteraction($event, 'standard', 'finish-pin')" />
                     }
 
                     @for (marker of currentStandardMarkers; track marker.id) {
                       <g class="se-custom-course-marker" (pointerdown)="beginCourseElementInteraction($event, 'standard', 'marker', marker.id)">
-                        <circle [attr.cx]="marker.x" [attr.cy]="marker.y" r="9" class="se-course-mark" />
-                        <text [attr.x]="marker.x" [attr.y]="marker.y + 5" class="se-course-mark-text">{{ marker.label }}</text>
+                        <circle [attr.cx]="marker.x" [attr.cy]="marker.y" r="9" class="se-course-mark" [class.se-course-mark--selected]="isSelectedMarker('standard', marker.id)" [attr.fill]="getMarkerFill(marker)" [attr.stroke]="getMarkerStroke(marker)" />
+                        <text [attr.x]="marker.x" [attr.y]="marker.y + 5" class="se-course-mark-text" [attr.fill]="getMarkerTextColor(marker)">{{ marker.label }}</text>
                       </g>
                     }
                     @for (note of displayedRaceNotes; track note.id) {
@@ -1030,7 +1030,19 @@
                     }
 
                     @for (area of currentRaceObjects; track area.id) {
-                      <g class="se-course-object-area">
+                      <g class="se-course-object-area" [attr.data-object-id]="area.id">
+                        @if (showStandardCourseBuilderUi && !isObjectDrawingMode) {
+                          <rect
+                            [attr.x]="getCourseObjectBounds(area).minX - 12"
+                            [attr.y]="getCourseObjectBounds(area).minY - 12"
+                            [attr.width]="getCourseObjectBounds(area).maxX - getCourseObjectBounds(area).minX + 24"
+                            [attr.height]="getCourseObjectBounds(area).maxY - getCourseObjectBounds(area).minY + 24"
+                            rx="16"
+                            class="se-course-object-hitbox"
+                            [class.se-course-object-hitbox--selected]="isSelectedObject('standard', area.id)"
+                            (pointerdown)="beginCourseElementInteraction($event, 'standard', 'object', area.id)"
+                          />
+                        }
                         @if (!isIconOnlyObject(area.kind) && area.stamps.length > 1) {
                           <polyline
                             [attr.points]="getObjectLinePoints(area)"
@@ -1127,6 +1139,39 @@
                           </foreignObject>
                         }
                       </g>
+                    }
+
+                    @if (showStandardCourseBuilderUi && hasEditorSelection && editorSelection?.mode === 'standard') {
+                      <foreignObject
+                        [attr.x]="getSelectionToolbarX() - (getSelectionToolbarWidth() / 2)"
+                        [attr.y]="getSelectionToolbarY() - 12"
+                        [attr.width]="getSelectionToolbarWidth()"
+                        height="40"
+                        class="se-course-selection-toolbar-fo">
+                        <div xmlns="http://www.w3.org/1999/xhtml" class="se-course-selection-toolbar">
+                          <button class="app-btn-surface se-course-selection-action" type="button" aria-label="Löschen" (click)="deleteSelectedCourseElement()">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                              <path d="M5 7h14" />
+                              <path d="M9 7V5.4c0-.8.6-1.4 1.4-1.4h3.2c.8 0 1.4.6 1.4 1.4V7" />
+                              <path d="M7 7.8 8 19c.1.8.7 1.4 1.5 1.4h5c.8 0 1.4-.6 1.5-1.4l1-11.2" />
+                            </svg>
+                          </button>
+                          @if (canEditSelectedMarkerColor) {
+                            <div class="se-course-selection-colors">
+                              @for (option of markerColorOptions; track option.id) {
+                                <button
+                                  class="se-course-color-swatch"
+                                  type="button"
+                                  [class.se-course-color-swatch--active]="selectedMarkerColor === option.id"
+                                  [style.--swatch-fill]="option.fill"
+                                  [style.--swatch-stroke]="option.stroke"
+                                  (click)="applySelectedMarkerColor(option.id)">
+                                </button>
+                              }
+                            </div>
+                          }
+                        </div>
+                      </foreignObject>
                     }
                     </g>
 
@@ -1308,42 +1353,6 @@
 
             </section>
 
-            @if (confirmStandardCourseClearOpen) {
-              <div class="sd-confirm-overlay" (click)="cancelStandardCourseClear()">
-                <div class="sd-confirm-box" (click)="$event.stopPropagation()">
-                  <p class="sd-confirm-title">Kurs leeren?</p>
-                  <p class="sd-confirm-text">Alle gesetzten Tonnen, Start- und Ziellinien werden entfernt.</p>
-                  <div class="sd-confirm-btns">
-                    <button class="sd-confirm-cancel" type="button" (click)="cancelStandardCourseClear()">Abbrechen</button>
-                    <button class="sd-confirm-delete" type="button" (click)="confirmStandardCourseClear()">Alles löschen</button>
-                  </div>
-                </div>
-              </div>
-            }
-
-              @if (confirmStandardCourseMarkerDeleteId) {
-                <div class="sd-confirm-overlay" (click)="cancelStandardCourseMarkerDelete()">
-                  <div class="sd-confirm-box" (click)="$event.stopPropagation()">
-                    <p class="sd-confirm-text">Diese Tonne wird aus dem Kurs entfernt.</p>
-                    <div class="sd-confirm-btns">
-                    <button class="sd-confirm-cancel" type="button" (click)="cancelStandardCourseMarkerDelete()">Abbrechen</button>
-                    <button class="sd-confirm-delete" type="button" (click)="confirmStandardCourseMarkerDelete()">Löschen</button>
-                  </div>
-                  </div>
-                </div>
-              }
-
-              @if (confirmStandardCourseLineDeleteKind) {
-                <div class="sd-confirm-overlay" (click)="cancelStandardCourseLineDelete()">
-                  <div class="sd-confirm-box" (click)="$event.stopPropagation()">
-                    <p class="sd-confirm-text">Dieses Element wird komplett aus dem Kurs entfernt.</p>
-                    <div class="sd-confirm-btns">
-                      <button class="sd-confirm-cancel" type="button" (click)="cancelStandardCourseLineDelete()">Abbrechen</button>
-                      <button class="sd-confirm-delete" type="button" (click)="confirmStandardCourseLineDelete()">Löschen</button>
-                    </div>
-                  </div>
-                </div>
-              }
           }
 
           @if (customCourseNameOpen) {
@@ -1477,7 +1486,7 @@
                       class="app-btn-surface se-custom-course-tool se-custom-course-tool--icon"
                       type="button"
                       aria-label="Kurs leeren"
-                      (click)="openCustomCourseClearConfirm()">
+                      (click)="clearCustomCourseCourseElements()">
                       <svg viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M5 7h14" />
                         <path d="M9 7V5.4c0-.8.6-1.4 1.4-1.4h3.2c.8 0 1.4.6 1.4 1.4V7" />
@@ -1557,31 +1566,43 @@
                     <line x1="74" y1="46" x2="74" y2="104" class="se-course-wind-arrow" />
                     <polyline points="62,90 74,104 86,90" class="se-course-wind-arrow-head" />
                     @if (selectedCourseStartLine; as startLine) {
-                      <g (click)="promptCustomCourseLineDelete('start', $event)">
-                        <line [attr.x1]="startLine.boat.x" [attr.y1]="startLine.boat.y" [attr.x2]="startLine.pin.x" [attr.y2]="startLine.pin.y" class="se-course-line se-course-line--start" />
+                      <g>
+                        <line [attr.x1]="startLine.boat.x" [attr.y1]="startLine.boat.y" [attr.x2]="startLine.pin.x" [attr.y2]="startLine.pin.y" class="se-course-line se-course-line--start" [class.se-course-line--selected]="isSelectedLine('custom', 'start')" />
                         <text [attr.x]="getCourseLineLabelX(startLine)" [attr.y]="getCourseLineLabelY(startLine)" class="se-course-small-label se-course-small-label--start">{{ getStartLineDisplayLabel() }}</text>
                       </g>
-                      <rect [attr.x]="startLine.boat.x - 12" [attr.y]="startLine.boat.y - 10" width="24" height="18" rx="5" class="se-course-boat-block" (pointerdown)="beginCourseElementInteraction($event, 'custom', 'start-boat')" />
-                      <circle [attr.cx]="startLine.pin.x" [attr.cy]="startLine.pin.y" r="10" class="se-course-mark se-course-mark--start" (pointerdown)="beginCourseElementInteraction($event, 'custom', 'start-pin')" />
+                      <rect [attr.x]="startLine.boat.x - 12" [attr.y]="startLine.boat.y - 10" width="24" height="18" rx="5" class="se-course-boat-block" [class.se-course-boat-block--selected]="isSelectedLine('custom', 'start')" (pointerdown)="beginCourseElementInteraction($event, 'custom', 'start-boat')" />
+                      <circle [attr.cx]="startLine.pin.x" [attr.cy]="startLine.pin.y" r="10" class="se-course-mark se-course-mark--start" [class.se-course-mark--selected]="isSelectedLine('custom', 'start')" (pointerdown)="beginCourseElementInteraction($event, 'custom', 'start-pin')" />
                     }
                     @if (showSeparateFinishLine && selectedCourseFinishLine; as finishLine) {
-                      <g (click)="promptCustomCourseLineDelete('finish', $event)">
-                        <line [attr.x1]="finishLine.boat.x" [attr.y1]="finishLine.boat.y" [attr.x2]="finishLine.pin.x" [attr.y2]="finishLine.pin.y" class="se-course-line se-course-line--finish" />
+                      <g>
+                        <line [attr.x1]="finishLine.boat.x" [attr.y1]="finishLine.boat.y" [attr.x2]="finishLine.pin.x" [attr.y2]="finishLine.pin.y" class="se-course-line se-course-line--finish" [class.se-course-line--selected]="isSelectedLine('custom', 'finish')" />
                         <text [attr.x]="getCourseLineLabelX(finishLine)" [attr.y]="getCourseLineLabelY(finishLine)" class="se-course-small-label se-course-small-label--start">Ziel</text>
                       </g>
-                      <rect [attr.x]="finishLine.boat.x - 12" [attr.y]="finishLine.boat.y - 10" width="24" height="18" rx="5" class="se-course-boat-block" (pointerdown)="beginCourseElementInteraction($event, 'custom', 'finish-boat')" />
-                      <circle [attr.cx]="finishLine.pin.x" [attr.cy]="finishLine.pin.y" r="10" class="se-course-mark se-course-mark--finish" (pointerdown)="beginCourseElementInteraction($event, 'custom', 'finish-pin')" />
+                      <rect [attr.x]="finishLine.boat.x - 12" [attr.y]="finishLine.boat.y - 10" width="24" height="18" rx="5" class="se-course-boat-block" [class.se-course-boat-block--selected]="isSelectedLine('custom', 'finish')" (pointerdown)="beginCourseElementInteraction($event, 'custom', 'finish-boat')" />
+                      <circle [attr.cx]="finishLine.pin.x" [attr.cy]="finishLine.pin.y" r="10" class="se-course-mark se-course-mark--finish" [class.se-course-mark--selected]="isSelectedLine('custom', 'finish')" (pointerdown)="beginCourseElementInteraction($event, 'custom', 'finish-pin')" />
                     }
 
                     @for (marker of currentCustomMarkers; track marker.id) {
                       <g class="se-custom-course-marker" (pointerdown)="beginCourseElementInteraction($event, 'custom', 'marker', marker.id)">
-                        <circle [attr.cx]="marker.x" [attr.cy]="marker.y" r="9" class="se-course-mark" />
-                        <text [attr.x]="marker.x" [attr.y]="marker.y + 5" class="se-course-mark-text">{{ marker.label }}</text>
+                        <circle [attr.cx]="marker.x" [attr.cy]="marker.y" r="9" class="se-course-mark" [class.se-course-mark--selected]="isSelectedMarker('custom', marker.id)" [attr.fill]="getMarkerFill(marker)" [attr.stroke]="getMarkerStroke(marker)" />
+                        <text [attr.x]="marker.x" [attr.y]="marker.y + 5" class="se-course-mark-text" [attr.fill]="getMarkerTextColor(marker)">{{ marker.label }}</text>
                       </g>
                     }
 
                     @for (area of currentRaceObjects; track area.id) {
-                      <g class="se-course-object-area">
+                      <g class="se-course-object-area" [attr.data-object-id]="area.id">
+                        @if (showCustomCourseBuilderUi && !isObjectDrawingMode) {
+                          <rect
+                            [attr.x]="getCourseObjectBounds(area).minX - 12"
+                            [attr.y]="getCourseObjectBounds(area).minY - 12"
+                            [attr.width]="getCourseObjectBounds(area).maxX - getCourseObjectBounds(area).minX + 24"
+                            [attr.height]="getCourseObjectBounds(area).maxY - getCourseObjectBounds(area).minY + 24"
+                            rx="16"
+                            class="se-course-object-hitbox"
+                            [class.se-course-object-hitbox--selected]="isSelectedObject('custom', area.id)"
+                            (pointerdown)="beginCourseElementInteraction($event, 'custom', 'object', area.id)"
+                          />
+                        }
                         @if (!isIconOnlyObject(area.kind) && area.stamps.length > 1) {
                           <polyline
                             [attr.points]="getObjectLinePoints(area)"
@@ -1678,6 +1699,38 @@
                           </foreignObject>
                         }
                       </g>
+                    }
+                    @if (showCustomCourseBuilderUi && hasEditorSelection && editorSelection?.mode === 'custom') {
+                      <foreignObject
+                        [attr.x]="getSelectionToolbarX() - (getSelectionToolbarWidth() / 2)"
+                        [attr.y]="getSelectionToolbarY() - 12"
+                        [attr.width]="getSelectionToolbarWidth()"
+                        height="40"
+                        class="se-course-selection-toolbar-fo">
+                        <div xmlns="http://www.w3.org/1999/xhtml" class="se-course-selection-toolbar">
+                          <button class="app-btn-surface se-course-selection-action" type="button" aria-label="Löschen" (click)="deleteSelectedCourseElement()">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                              <path d="M5 7h14" />
+                              <path d="M9 7V5.4c0-.8.6-1.4 1.4-1.4h3.2c.8 0 1.4.6 1.4 1.4V7" />
+                              <path d="M7 7.8 8 19c.1.8.7 1.4 1.5 1.4h5c.8 0 1.4-.6 1.5-1.4l1-11.2" />
+                            </svg>
+                          </button>
+                          @if (canEditSelectedMarkerColor) {
+                            <div class="se-course-selection-colors">
+                              @for (option of markerColorOptions; track option.id) {
+                                <button
+                                  class="se-course-color-swatch"
+                                  type="button"
+                                  [class.se-course-color-swatch--active]="selectedMarkerColor === option.id"
+                                  [style.--swatch-fill]="option.fill"
+                                  [style.--swatch-stroke]="option.stroke"
+                                  (click)="applySelectedMarkerColor(option.id)">
+                                </button>
+                              }
+                            </div>
+                          }
+                        </div>
+                      </foreignObject>
                     }
 
                     @for (note of displayedRaceNotes; track note.id) {
@@ -1909,42 +1962,6 @@
                   <button class="app-btn-surface se-race-action-btn" [class.se-race-action-btn--primary]="!raceIsActive" [class.btn-danger-pill]="raceIsActive" (click)="toggleRaceState()">
                     {{ raceActionLabel }}
                   </button>
-                </div>
-              }
-
-              @if (confirmCustomCourseClearOpen) {
-                <div class="sd-confirm-overlay" (click)="cancelCustomCourseClear()">
-                  <div class="sd-confirm-box" (click)="$event.stopPropagation()">
-                    <p class="sd-confirm-text">Wirklich den ganzen Kurs löschen?</p>
-                    <div class="sd-confirm-btns">
-                      <button class="sd-confirm-cancel" type="button" (click)="cancelCustomCourseClear()">Abbrechen</button>
-                      <button class="sd-confirm-delete" type="button" (click)="confirmCustomCourseClear()">Alles löschen</button>
-                    </div>
-                  </div>
-                </div>
-              }
-
-              @if (confirmCustomCourseMarkerDeleteId) {
-                <div class="sd-confirm-overlay" (click)="cancelCustomCourseMarkerDelete()">
-                  <div class="sd-confirm-box" (click)="$event.stopPropagation()">
-                    <p class="sd-confirm-text">Dieses Element wirklich löschen?</p>
-                    <div class="sd-confirm-btns">
-                      <button class="sd-confirm-cancel" type="button" (click)="cancelCustomCourseMarkerDelete()">Abbrechen</button>
-                      <button class="sd-confirm-delete" type="button" (click)="confirmCustomCourseMarkerDelete()">Löschen</button>
-                    </div>
-                  </div>
-                </div>
-              }
-
-              @if (confirmCustomCourseLineDeleteKind) {
-                <div class="sd-confirm-overlay" (click)="cancelCustomCourseLineDelete()">
-                  <div class="sd-confirm-box" (click)="$event.stopPropagation()">
-                    <p class="sd-confirm-text">Dieses Element wird komplett aus dem Kurs entfernt.</p>
-                    <div class="sd-confirm-btns">
-                      <button class="sd-confirm-cancel" type="button" (click)="cancelCustomCourseLineDelete()">Abbrechen</button>
-                      <button class="sd-confirm-delete" type="button" (click)="confirmCustomCourseLineDelete()">Löschen</button>
-                    </div>
-                  </div>
                 </div>
               }
 

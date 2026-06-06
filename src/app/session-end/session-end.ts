@@ -4,6 +4,7 @@ import { ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { StorageService } from '../services/storage.service';
 import {
+  CourseMarkerColor,
   CustomCourseDefinition,
   CustomCourseLine,
   CustomCourseMarker,
@@ -114,7 +115,24 @@ interface CustomCourseToolOption {
   label: string;
 }
 
-type CourseDragTargetType = 'marker' | 'start-boat' | 'start-pin' | 'finish-boat' | 'finish-pin';
+type CourseDragTargetType = 'marker' | 'start-boat' | 'start-pin' | 'finish-boat' | 'finish-pin' | 'object';
+type CourseSelectionType = 'marker' | 'start' | 'finish' | 'object';
+
+interface CourseSelectionState {
+  mode: 'custom' | 'standard';
+  type: CourseSelectionType;
+  markerId?: string;
+  lineKind?: 'start' | 'finish';
+  objectId?: string;
+}
+
+interface MarkerColorOption {
+  id: CourseMarkerColor;
+  label: string;
+  fill: string;
+  stroke: string;
+  text: string;
+}
 
 type CustomHeading = 'left' | 'up-left' | 'up-right' | 'right' | 'down-left' | 'down-right';
 type CustomCoursePlacementTool = 'mark' | 'start' | 'finish' | 'gate';
@@ -288,6 +306,15 @@ const CUSTOM_COURSE_TOOL_OPTIONS: CustomCourseToolOption[] = [
   { id: 'gate', label: 'Gate' }
 ];
 
+const MARKER_COLOR_OPTIONS: MarkerColorOption[] = [
+  { id: 'blue', label: 'Blau', fill: '#2B6BFF', stroke: '#8FB3FF', text: '#F8FBFF' },
+  { id: 'yellow', label: 'Gelb', fill: '#F4C430', stroke: '#FFE38A', text: '#161616' },
+  { id: 'orange', label: 'Orange', fill: '#F57C2C', stroke: '#FFB179', text: '#151515' },
+  { id: 'green', label: 'Grün', fill: '#2EAD65', stroke: '#8EE0AF', text: '#F6FFF9' },
+  { id: 'white', label: 'Weiß', fill: '#F3F3F3', stroke: '#FFFFFF', text: '#111111' },
+  { id: 'black', label: 'Schwarz', fill: '#121212', stroke: '#8D8D8D', text: '#FFFFFF' }
+];
+
 const COURSE_PATHS: Record<string, CoursePoint[]> = {
   'course-racing-outer': [
     { x: 120, y: 218 },
@@ -390,7 +417,7 @@ const RACE_START_LINES: Partial<Record<string, StartLineConfig>> = {
   }
 };
 
-const STANDARD_COURSE_MARKERS: Partial<Record<string, Array<{ x: number; y: number; label: string; kind?: 'mark' | 'gate'; groupId?: string }>>> = {
+const STANDARD_COURSE_MARKERS: Partial<Record<string, Array<{ x: number; y: number; label: string; kind?: 'mark' | 'gate'; groupId?: string; color?: CourseMarkerColor }>>> = {
   'course-racing-outer': [
     { x: 184, y: 22, label: '1', kind: 'mark' },
     { x: 44, y: 64, label: '2', kind: 'mark' },
@@ -513,12 +540,6 @@ export class SessionEndComponent implements OnInit, OnDestroy {
   private pendingCustomCourseGateAnchor: CoursePoint | null = null;
   private pendingStandardCourseLineAnchor: CoursePoint | null = null;
   private pendingStandardCourseGateAnchor: CoursePoint | null = null;
-  confirmCustomCourseClearOpen = false;
-  confirmCustomCourseMarkerDeleteId: string | null = null;
-  confirmCustomCourseLineDeleteKind: 'start' | 'finish' | null = null;
-  confirmStandardCourseClearOpen = false;
-  confirmStandardCourseMarkerDeleteId: string | null = null;
-  confirmStandardCourseLineDeleteKind: 'start' | 'finish' | null = null;
   customCoursePanMode = false;
   customCoursePanOffset: CoursePoint = { x: 0, y: 0 };
   customCourseToolMenuOpen = false;
@@ -557,10 +578,15 @@ export class SessionEndComponent implements OnInit, OnDestroy {
   private activeCourseElementMode: 'custom' | 'standard' | null = null;
   private activeCourseElementType: CourseDragTargetType | null = null;
   private activeCourseElementMarkerId: string | null = null;
+  private activeCourseElementObjectId: string | null = null;
+  private activeCourseElementStartPoint: CoursePoint | null = null;
+  private activeCourseElementObjectSnapshot: ReplayObjectArea | null = null;
   private activeCourseElementMoved = false;
   private activeCourseElementDragArmed = false;
   private activeCourseElementStartClient: { x: number; y: number } | null = null;
   private activeCourseElementHoldTimer: number | null = null;
+  editorSelection: CourseSelectionState | null = null;
+  markerColorPaletteOpen = false;
   private pinchStartDistance: number | null = null;
   private pinchStartZoomFactor = 1;
   private activeControlPointerId: number | null = null;
@@ -637,6 +663,7 @@ export class SessionEndComponent implements OnInit, OnDestroy {
   tempStartDate = '';
   setupSpotEditOpen = false;
   setupDateEditOpen = false;
+  readonly markerColorOptions = MARKER_COLOR_OPTIONS;
 
   // Training contents
   contentStates: ContentState[] = TRAINING_CONTENT_DEFS.map(def => ({
@@ -1014,6 +1041,14 @@ export class SessionEndComponent implements OnInit, OnDestroy {
     return this.standardCourseHistory.length > 0;
   }
 
+  get hasEditorSelection(): boolean {
+    return !!this.editorSelection;
+  }
+
+  get canEditSelectedMarkerColor(): boolean {
+    return this.editorSelection?.type === 'marker';
+  }
+
   get currentCustomMarkers(): CustomCourseMarker[] {
     return this.selectedCustomCourse?.markers ?? [];
   }
@@ -1024,6 +1059,12 @@ export class SessionEndComponent implements OnInit, OnDestroy {
 
   get currentCourseMarkers(): CustomCourseMarker[] {
     return this.selectedCustomCourse ? this.currentCustomMarkers : this.currentStandardMarkers;
+  }
+
+  get selectedMarkerColor(): CourseMarkerColor | null {
+    if (this.editorSelection?.type !== 'marker') return null;
+    const marker = this.getSelectedMarker();
+    return marker ? this.getResolvedMarkerColor(marker) : null;
   }
 
   get customCoursePathPoints(): string {
@@ -1394,7 +1435,7 @@ export class SessionEndComponent implements OnInit, OnDestroy {
     if (!previous) return;
     this.pendingCustomCourseLineAnchor = null;
     this.pendingCustomCourseGateAnchor = null;
-    this.confirmCustomCourseMarkerDeleteId = null;
+    this.clearEditorSelection();
     this.selectedCustomCourse = previous.course;
     if (this.currentRacePreviewKey) {
       this.raceObjectsByPreview[this.currentRacePreviewKey] = this.cloneReplayObjects(previous.objects);
@@ -1402,16 +1443,7 @@ export class SessionEndComponent implements OnInit, OnDestroy {
     this.persistSelectedCustomCourse();
   }
 
-  openCustomCourseClearConfirm() {
-    if (!this.selectedCustomCourse) return;
-    this.confirmCustomCourseClearOpen = true;
-  }
-
-  cancelCustomCourseClear() {
-    this.confirmCustomCourseClearOpen = false;
-  }
-
-  confirmCustomCourseClear() {
+  clearCustomCourseCourseElements() {
     if (!this.selectedCustomCourse) return;
     this.pushCustomCourseHistory();
     this.selectedCustomCourse = {
@@ -1421,7 +1453,10 @@ export class SessionEndComponent implements OnInit, OnDestroy {
       finishLine: null,
       startFinishMerged: false
     };
-    this.confirmCustomCourseClearOpen = false;
+    if (this.currentRacePreviewKey) {
+      this.raceObjectsByPreview[this.currentRacePreviewKey] = [];
+    }
+    this.clearEditorSelection();
     this.persistSelectedCustomCourse();
   }
 
@@ -1434,57 +1469,6 @@ export class SessionEndComponent implements OnInit, OnDestroy {
     const point = this.clampCoursePoint(this.getCustomCoursePointFromPointer(event, svg));
     this.placeCustomCourseElement(point);
     event.preventDefault();
-  }
-
-  promptCustomCourseMarkerDelete(markerId: string, event: Event) {
-    if (!this.selectedCustomCourse || this.playbackRace || this.raceIsActive) return;
-    event.stopPropagation();
-    if (this.isObjectDrawingMode || this.customCoursePanMode || this.customCoursePlacementTool) return;
-    this.confirmCustomCourseMarkerDeleteId = markerId;
-  }
-
-  cancelCustomCourseMarkerDelete() {
-    this.confirmCustomCourseMarkerDeleteId = null;
-  }
-
-  confirmCustomCourseMarkerDelete() {
-    if (!this.selectedCustomCourse || this.playbackRace || this.raceIsActive || !this.confirmCustomCourseMarkerDeleteId) return;
-    const markerId = this.confirmCustomCourseMarkerDeleteId;
-    this.confirmCustomCourseMarkerDeleteId = null;
-    const marker = this.selectedCustomCourse.markers.find(entry => entry.id === markerId);
-    if (!marker) return;
-    this.pushCustomCourseHistory();
-    const remainingMarkers = marker.groupId
-      ? this.selectedCustomCourse.markers.filter(entry => entry.groupId !== marker.groupId)
-      : this.selectedCustomCourse.markers.filter(entry => entry.id !== markerId);
-    this.selectedCustomCourse = {
-      ...this.selectedCustomCourse,
-      markers: remainingMarkers
-    };
-    this.persistSelectedCustomCourse();
-  }
-
-  promptCustomCourseLineDelete(kind: 'start' | 'finish', event: Event) {
-    if (!this.selectedCustomCourse || this.playbackRace || this.raceIsActive) return;
-    event.stopPropagation();
-    if (this.isObjectDrawingMode || this.customCoursePanMode || this.customCoursePlacementTool) return;
-    this.confirmCustomCourseLineDeleteKind = kind;
-  }
-
-  cancelCustomCourseLineDelete() {
-    this.confirmCustomCourseLineDeleteKind = null;
-  }
-
-  confirmCustomCourseLineDelete() {
-    if (!this.selectedCustomCourse || this.playbackRace || this.raceIsActive || !this.confirmCustomCourseLineDeleteKind) return;
-    const kind = this.confirmCustomCourseLineDeleteKind;
-    this.confirmCustomCourseLineDeleteKind = null;
-    this.pushCustomCourseHistory();
-    this.selectedCustomCourse = {
-      ...this.selectedCustomCourse,
-      [kind === 'start' ? 'startLine' : 'finishLine']: null
-    };
-    this.persistSelectedCustomCourse();
   }
 
   startObjectDrawing(kind: ReplayObjectKind) {
@@ -1500,6 +1484,7 @@ export class SessionEndComponent implements OnInit, OnDestroy {
     this.pendingCustomCourseGateAnchor = null;
     this.pendingStandardCourseLineAnchor = null;
     this.pendingStandardCourseGateAnchor = null;
+    this.clearEditorSelection();
     this.objectDrawingTool = kind;
     this.activeObjectPointerId = null;
     this.activeObjectBounds = null;
@@ -1529,7 +1514,7 @@ export class SessionEndComponent implements OnInit, OnDestroy {
 
   onCustomCoursePanPointerDown(event: PointerEvent) {
     if (!this.selectedCustomCourse || this.playbackRace || this.raceIsActive || this.isObjectDrawingMode || this.customCoursePlacementTool) return;
-    if (event.pointerType === 'touch') return;
+    if ((event as PointerEvent).isPrimary === false) return;
     this.activeCustomCoursePanPointerId = event.pointerId;
     const currentTarget = event.currentTarget as SVGGraphicsElement | SVGSVGElement | null;
     const svg = currentTarget instanceof SVGSVGElement ? currentTarget : currentTarget?.ownerSVGElement;
@@ -1567,11 +1552,22 @@ export class SessionEndComponent implements OnInit, OnDestroy {
     const target = event.currentTarget as SVGGraphicsElement | null;
     const svg = target?.ownerSVGElement;
     if (!target || !svg) return;
+    const selection = this.buildSelectionForInteraction(mode, type, markerId ?? this.extractObjectIdFromEventTarget(event));
+    const alreadySelected = this.isSameSelection(this.editorSelection, selection);
     if (mode === 'custom') {
-      if (!this.selectedCustomCourse || this.playbackRace || this.raceIsActive || this.isObjectDrawingMode || this.customCoursePanMode || this.customCoursePlacementTool) return;
+      if (!this.selectedCustomCourse || this.playbackRace || this.raceIsActive || this.isObjectDrawingMode || this.customCoursePlacementTool) return;
+    } else {
+      if (!this.selectedRaceCourse || this.playbackRace || this.raceIsActive || this.isObjectDrawingMode || this.standardCoursePlacementTool) return;
+    }
+    if (!alreadySelected) {
+      this.setEditorSelection(selection);
+      event.stopPropagation();
+      event.preventDefault();
+      return;
+    }
+    if (mode === 'custom') {
       this.pushCustomCourseHistory();
     } else {
-      if (!this.selectedRaceCourse || this.playbackRace || this.raceIsActive || this.isObjectDrawingMode || this.coursePanMode || this.standardCoursePlacementTool) return;
       this.pushStandardCourseHistory();
     }
     this.activeCourseBounds = svg.getBoundingClientRect();
@@ -1579,6 +1575,11 @@ export class SessionEndComponent implements OnInit, OnDestroy {
     this.activeCourseElementMode = mode;
     this.activeCourseElementType = type;
     this.activeCourseElementMarkerId = markerId ?? null;
+    this.activeCourseElementObjectId = type === 'object' ? (selection?.objectId ?? null) : null;
+    this.activeCourseElementStartPoint = this.clampCoursePoint(this.getCoursePointFromPointer(event));
+    this.activeCourseElementObjectSnapshot = type === 'object'
+      ? (this.getSelectedObjectArea() ? this.cloneReplayObjects([this.getSelectedObjectArea()!])[0] : null)
+      : null;
     this.activeCourseElementMoved = false;
     this.activeCourseElementDragArmed = false;
     this.activeCourseElementStartClient = { x: event.clientX, y: event.clientY };
@@ -1612,13 +1613,15 @@ export class SessionEndComponent implements OnInit, OnDestroy {
     const target = event.currentTarget as SVGGraphicsElement | null;
     const mode = this.activeCourseElementMode;
     const type = this.activeCourseElementType;
-    const markerId = this.activeCourseElementMarkerId;
     const moved = this.activeCourseElementMoved;
     this.clearCourseElementHoldTimer();
     this.activeCourseElementPointerId = null;
     this.activeCourseElementMode = null;
     this.activeCourseElementType = null;
     this.activeCourseElementMarkerId = null;
+    this.activeCourseElementObjectId = null;
+    this.activeCourseElementStartPoint = null;
+    this.activeCourseElementObjectSnapshot = null;
     this.activeCourseElementStartClient = null;
     this.activeCourseElementMoved = false;
     this.activeCourseElementDragArmed = false;
@@ -1636,21 +1639,6 @@ export class SessionEndComponent implements OnInit, OnDestroy {
         }
       }
       return;
-    }
-    if (type === 'marker' && markerId) {
-      if (mode === 'custom') {
-        this.confirmCustomCourseMarkerDeleteId = markerId;
-      } else {
-        this.confirmStandardCourseMarkerDeleteId = markerId;
-      }
-      return;
-    }
-    if (type === 'start-boat' || type === 'start-pin') {
-      mode === 'custom' ? this.confirmCustomCourseLineDeleteKind = 'start' : this.confirmStandardCourseLineDeleteKind = 'start';
-      return;
-    }
-    if (type === 'finish-boat' || type === 'finish-pin') {
-      mode === 'custom' ? this.confirmCustomCourseLineDeleteKind = 'finish' : this.confirmStandardCourseLineDeleteKind = 'finish';
     }
   }
 
@@ -1725,7 +1713,8 @@ export class SessionEndComponent implements OnInit, OnDestroy {
       y: marker.y,
       label: marker.label,
       kind: marker.kind ?? 'mark',
-      groupId: marker.groupId
+      groupId: marker.groupId,
+      color: marker.color ?? this.getDefaultMarkerColor()
     }));
     const startLine = RACE_START_LINES[this.selectedRaceCourse.id];
     const finishLine = RACE_FINISH_LINES[this.selectedRaceCourse.id];
@@ -1752,7 +1741,8 @@ export class SessionEndComponent implements OnInit, OnDestroy {
             x: point.x,
             y: point.y,
             label: String(this.getNextStandardCourseSequenceNumber()),
-            kind: 'mark'
+            kind: 'mark',
+            color: this.getDefaultMarkerColor()
           }
         ];
         return;
@@ -1807,8 +1797,8 @@ export class SessionEndComponent implements OnInit, OnDestroy {
     const label = `${sequenceNumber}${suffix}`;
     this.standardCourseMarkers = [
       ...this.standardCourseMarkers,
-      { id: `${groupId}-a`, x: anchor.x, y: anchor.y, label, kind: 'gate', groupId },
-      { id: `${groupId}-b`, x: point.x, y: point.y, label, kind: 'gate', groupId }
+      { id: `${groupId}-a`, x: anchor.x, y: anchor.y, label, kind: 'gate', groupId, color: this.getDefaultMarkerColor() },
+      { id: `${groupId}-b`, x: point.x, y: point.y, label, kind: 'gate', groupId, color: this.getDefaultMarkerColor() }
     ];
   }
 
@@ -1838,6 +1828,27 @@ export class SessionEndComponent implements OnInit, OnDestroy {
     if (!type) return;
     if (this.activeCourseElementMode === 'custom') {
       if (!this.selectedCustomCourse) return;
+      if (type === 'object' && this.activeCourseElementObjectId && this.activeCourseElementObjectSnapshot && this.activeCourseElementStartPoint && this.currentRacePreviewKey) {
+        const dx = point.x - this.activeCourseElementStartPoint.x;
+        const dy = point.y - this.activeCourseElementStartPoint.y;
+        this.raceObjectsByPreview[this.currentRacePreviewKey] = this.currentRaceObjects.map(area => {
+          if (area.id !== this.activeCourseElementObjectId) return area;
+          return {
+            ...this.activeCourseElementObjectSnapshot!,
+            center: {
+              x: this.activeCourseElementObjectSnapshot!.center.x + dx,
+              y: this.activeCourseElementObjectSnapshot!.center.y + dy
+            },
+            stamps: this.activeCourseElementObjectSnapshot!.stamps.map(stamp => ({
+              ...stamp,
+              x: stamp.x + dx,
+              y: stamp.y + dy
+            }))
+          };
+        });
+        this.cdr.detectChanges();
+        return;
+      }
       if (type === 'marker' && markerId) {
         this.selectedCustomCourse = {
           ...this.selectedCustomCourse,
@@ -1860,6 +1871,28 @@ export class SessionEndComponent implements OnInit, OnDestroy {
       if (lineKey === 'finishLine' && !this.confirmMergeStartFinishOpen && this.shouldOfferDraggedFinishMerge(type, nextLine)) {
         this.openMergeStartFinishConfirm('custom', nextLine);
       }
+      return;
+    }
+
+    if (type === 'object' && this.activeCourseElementObjectId && this.activeCourseElementObjectSnapshot && this.activeCourseElementStartPoint && this.currentRacePreviewKey) {
+      const dx = point.x - this.activeCourseElementStartPoint.x;
+      const dy = point.y - this.activeCourseElementStartPoint.y;
+      this.raceObjectsByPreview[this.currentRacePreviewKey] = this.currentRaceObjects.map(area => {
+        if (area.id !== this.activeCourseElementObjectId) return area;
+        return {
+          ...this.activeCourseElementObjectSnapshot!,
+          center: {
+            x: this.activeCourseElementObjectSnapshot!.center.x + dx,
+            y: this.activeCourseElementObjectSnapshot!.center.y + dy
+          },
+          stamps: this.activeCourseElementObjectSnapshot!.stamps.map(stamp => ({
+            ...stamp,
+            x: stamp.x + dx,
+            y: stamp.y + dy
+          }))
+        };
+      });
+      this.cdr.detectChanges();
       return;
     }
 
@@ -1887,6 +1920,251 @@ export class SessionEndComponent implements OnInit, OnDestroy {
     if (this.activeCourseElementHoldTimer === null) return;
     clearTimeout(this.activeCourseElementHoldTimer);
     this.activeCourseElementHoldTimer = null;
+  }
+
+  private getDefaultMarkerColor(): CourseMarkerColor {
+    return this.storage.getTheme() === 'light' ? 'white' : 'black';
+  }
+
+  getMarkerColorOption(color: CourseMarkerColor): MarkerColorOption {
+    return this.markerColorOptions.find(option => option.id === color) ?? this.markerColorOptions[this.markerColorOptions.length - 1];
+  }
+
+  getResolvedMarkerColor(marker: CustomCourseMarker): CourseMarkerColor {
+    return marker.color ?? this.getDefaultMarkerColor();
+  }
+
+  getMarkerFill(marker: CustomCourseMarker): string {
+    return this.getMarkerColorOption(this.getResolvedMarkerColor(marker)).fill;
+  }
+
+  getMarkerStroke(marker: CustomCourseMarker): string {
+    return this.getMarkerColorOption(this.getResolvedMarkerColor(marker)).stroke;
+  }
+
+  getMarkerTextColor(marker: CustomCourseMarker): string {
+    return this.getMarkerColorOption(this.getResolvedMarkerColor(marker)).text;
+  }
+
+  clearEditorSelection() {
+    this.editorSelection = null;
+    this.markerColorPaletteOpen = false;
+  }
+
+  private setEditorSelection(selection: CourseSelectionState | null) {
+    this.editorSelection = selection;
+    this.markerColorPaletteOpen = false;
+  }
+
+  private buildSelectionForInteraction(
+    mode: 'custom' | 'standard',
+    type: CourseDragTargetType,
+    itemId?: string
+  ): CourseSelectionState | null {
+    if (type === 'marker') {
+      return itemId ? { mode, type: 'marker', markerId: itemId } : null;
+    }
+    if (type === 'object') {
+      return itemId ? { mode, type: 'object', objectId: itemId } : null;
+    }
+    return {
+      mode,
+      type: type.startsWith('start') ? 'start' : 'finish',
+      lineKind: type.startsWith('start') ? 'start' : 'finish'
+    };
+  }
+
+  private extractObjectIdFromEventTarget(event: PointerEvent): string | undefined {
+    const target = event.target as HTMLElement | SVGElement | null;
+    return target?.closest?.('[data-object-id]')?.getAttribute('data-object-id') ?? undefined;
+  }
+
+  private isSameSelection(a: CourseSelectionState | null, b: CourseSelectionState | null): boolean {
+    return !!a && !!b
+      && a.mode === b.mode
+      && a.type === b.type
+      && a.markerId === b.markerId
+      && a.lineKind === b.lineKind
+      && a.objectId === b.objectId;
+  }
+
+  isSelectedMarker(mode: 'custom' | 'standard', markerId: string): boolean {
+    return this.editorSelection?.mode === mode
+      && this.editorSelection.type === 'marker'
+      && this.editorSelection.markerId === markerId;
+  }
+
+  isSelectedLine(mode: 'custom' | 'standard', kind: 'start' | 'finish'): boolean {
+    return this.editorSelection?.mode === mode
+      && this.editorSelection.type === kind;
+  }
+
+  isSelectedObject(mode: 'custom' | 'standard', objectId: string): boolean {
+    return this.editorSelection?.mode === mode
+      && this.editorSelection.type === 'object'
+      && this.editorSelection.objectId === objectId;
+  }
+
+  getSelectedMarker(): CustomCourseMarker | null {
+    if (this.editorSelection?.type !== 'marker' || !this.editorSelection.markerId) return null;
+    return this.currentCourseMarkers.find(marker => marker.id === this.editorSelection!.markerId) ?? null;
+  }
+
+  private getSelectedObjectArea(): ReplayObjectArea | null {
+    if (this.editorSelection?.type !== 'object' || !this.editorSelection.objectId) return null;
+    return this.currentRaceObjects.find(area => area.id === this.editorSelection!.objectId) ?? null;
+  }
+
+  toggleMarkerColorPalette() {
+    if (!this.canEditSelectedMarkerColor) return;
+    this.markerColorPaletteOpen = !this.markerColorPaletteOpen;
+  }
+
+  applySelectedMarkerColor(color: CourseMarkerColor) {
+    const selection = this.editorSelection;
+    if (!selection || selection.type !== 'marker' || !selection.markerId) return;
+    this.markerColorPaletteOpen = false;
+
+    if (selection.mode === 'custom') {
+      if (!this.selectedCustomCourse) return;
+      this.pushCustomCourseHistory();
+      const selected = this.selectedCustomCourse.markers.find(marker => marker.id === selection.markerId);
+      if (!selected) return;
+      this.selectedCustomCourse = {
+        ...this.selectedCustomCourse,
+        markers: this.selectedCustomCourse.markers.map(marker => {
+          if (selected.groupId) {
+            return marker.groupId === selected.groupId ? { ...marker, color } : marker;
+          }
+          return marker.id === selection.markerId ? { ...marker, color } : marker;
+        })
+      };
+      this.persistSelectedCustomCourse();
+      return;
+    }
+
+    this.pushStandardCourseHistory();
+    const selected = this.standardCourseMarkers.find(marker => marker.id === selection.markerId);
+    if (!selected) return;
+    this.standardCourseMarkers = this.standardCourseMarkers.map(marker => {
+      if (selected.groupId) {
+        return marker.groupId === selected.groupId ? { ...marker, color } : marker;
+      }
+      return marker.id === selection.markerId ? { ...marker, color } : marker;
+    });
+  }
+
+  deleteSelectedCourseElement() {
+    const selection = this.editorSelection;
+    if (!selection) return;
+
+    if (selection.type === 'marker' && selection.markerId) {
+      if (selection.mode === 'custom') {
+        if (!this.selectedCustomCourse) return;
+        const marker = this.selectedCustomCourse.markers.find(entry => entry.id === selection.markerId);
+        if (!marker) return;
+        this.pushCustomCourseHistory();
+        this.selectedCustomCourse = {
+          ...this.selectedCustomCourse,
+          markers: marker.groupId
+            ? this.selectedCustomCourse.markers.filter(entry => entry.groupId !== marker.groupId)
+            : this.selectedCustomCourse.markers.filter(entry => entry.id !== selection.markerId)
+        };
+        this.persistSelectedCustomCourse();
+      } else {
+        const marker = this.standardCourseMarkers.find(entry => entry.id === selection.markerId);
+        if (!marker) return;
+        this.pushStandardCourseHistory();
+        this.standardCourseMarkers = marker.groupId
+          ? this.standardCourseMarkers.filter(entry => entry.groupId !== marker.groupId)
+          : this.standardCourseMarkers.filter(entry => entry.id !== selection.markerId);
+      }
+      this.clearEditorSelection();
+      return;
+    }
+
+    if (selection.type === 'start' || selection.type === 'finish') {
+      if (selection.mode === 'custom') {
+        if (!this.selectedCustomCourse) return;
+        this.pushCustomCourseHistory();
+        this.selectedCustomCourse = {
+          ...this.selectedCustomCourse,
+          [selection.type === 'start' ? 'startLine' : 'finishLine']: null,
+          ...(selection.type === 'start' ? { startFinishMerged: false } : {})
+        };
+        this.persistSelectedCustomCourse();
+      } else {
+        this.pushStandardCourseHistory();
+        if (selection.type === 'start') {
+          this.standardCourseStartLineDraft = null;
+        } else {
+          this.standardCourseFinishLineDraft = null;
+        }
+        this.standardCourseStartFinishMerged = false;
+      }
+      this.clearEditorSelection();
+      return;
+    }
+
+    if (selection.type === 'object' && selection.objectId && this.currentRacePreviewKey) {
+      this.pushObjectHistoryForActiveCourse();
+      this.raceObjectsByPreview[this.currentRacePreviewKey] = this.currentRaceObjects.filter(area => area.id !== selection.objectId);
+      this.clearEditorSelection();
+      this.cdr.detectChanges();
+    }
+  }
+
+  getCourseObjectBounds(area: ReplayObjectArea): { minX: number; minY: number; maxX: number; maxY: number } {
+    const points = area.stamps.flatMap(stamp => {
+      const radius = stamp.radius ?? 0;
+      return [
+        { x: stamp.x - radius, y: stamp.y - radius },
+        { x: stamp.x + radius, y: stamp.y + radius }
+      ];
+    });
+    const fallback = area.center;
+    const allPoints = points.length ? points : [fallback];
+    return {
+      minX: Math.min(...allPoints.map(point => point.x)),
+      minY: Math.min(...allPoints.map(point => point.y)),
+      maxX: Math.max(...allPoints.map(point => point.x)),
+      maxY: Math.max(...allPoints.map(point => point.y))
+    };
+  }
+
+  getSelectionToolbarX(): number {
+    const selection = this.editorSelection;
+    if (!selection) return 0;
+    if (selection.type === 'marker') {
+      const marker = this.getSelectedMarker();
+      return marker ? marker.x : 0;
+    }
+    if (selection.type === 'object') {
+      const area = this.getSelectedObjectArea();
+      return area ? area.center.x : 0;
+    }
+    const line = selection.type === 'start' ? this.selectedCourseStartLine : this.selectedCourseFinishLine;
+    return line ? (line.boat.x + line.pin.x) / 2 : 0;
+  }
+
+  getSelectionToolbarY(): number {
+    const selection = this.editorSelection;
+    if (!selection) return 0;
+    if (selection.type === 'marker') {
+      const marker = this.getSelectedMarker();
+      return marker ? marker.y - 26 : 0;
+    }
+    if (selection.type === 'object') {
+      const area = this.getSelectedObjectArea();
+      if (!area) return 0;
+      return this.getCourseObjectBounds(area).minY - 26;
+    }
+    const line = selection.type === 'start' ? this.selectedCourseStartLine : this.selectedCourseFinishLine;
+    return line ? (Math.min(line.boat.y, line.pin.y) - 20) : 0;
+  }
+
+  getSelectionToolbarWidth(): number {
+    return this.canEditSelectedMarkerColor ? 156 : 54;
   }
 
   clearCurrentRaceObjects() {
@@ -1924,7 +2202,7 @@ export class SessionEndComponent implements OnInit, OnDestroy {
     if (!previous) return;
     this.pendingStandardCourseLineAnchor = null;
     this.pendingStandardCourseGateAnchor = null;
-    this.confirmStandardCourseMarkerDeleteId = null;
+    this.clearEditorSelection();
     this.standardCourseMarkers = previous.markers.map(marker => ({ ...marker }));
     this.standardCourseStartLineDraft = previous.startLine
       ? { boat: { ...previous.startLine.boat }, pin: { ...previous.startLine.pin } }
@@ -1938,23 +2216,17 @@ export class SessionEndComponent implements OnInit, OnDestroy {
     }
   }
 
-  openStandardCourseClearConfirm() {
-    if (!this.selectedRaceCourse) return;
-    this.confirmStandardCourseClearOpen = true;
-  }
-
-  cancelStandardCourseClear() {
-    this.confirmStandardCourseClearOpen = false;
-  }
-
-  confirmStandardCourseClear() {
+  clearStandardCourseElements() {
     if (!this.selectedRaceCourse) return;
     this.pushStandardCourseHistory();
     this.standardCourseMarkers = [];
     this.standardCourseStartLineDraft = null;
     this.standardCourseFinishLineDraft = null;
     this.standardCourseStartFinishMerged = false;
-    this.confirmStandardCourseClearOpen = false;
+    if (this.currentRacePreviewKey) {
+      this.raceObjectsByPreview[this.currentRacePreviewKey] = [];
+    }
+    this.clearEditorSelection();
   }
 
   onStandardCourseCanvasPointerDown(event: PointerEvent) {
@@ -1968,57 +2240,9 @@ export class SessionEndComponent implements OnInit, OnDestroy {
     event.preventDefault();
   }
 
-  promptStandardCourseMarkerDelete(markerId: string, event: Event) {
-    if (!this.selectedRaceCourse || this.playbackRace || this.raceIsActive) return;
-    event.stopPropagation();
-    if (this.isObjectDrawingMode || this.coursePanMode || this.standardCoursePlacementTool) return;
-    this.confirmStandardCourseMarkerDeleteId = markerId;
-  }
-
-  cancelStandardCourseMarkerDelete() {
-    this.confirmStandardCourseMarkerDeleteId = null;
-  }
-
-  confirmStandardCourseMarkerDelete() {
-    if (!this.selectedRaceCourse || this.playbackRace || this.raceIsActive || !this.confirmStandardCourseMarkerDeleteId) return;
-    const markerId = this.confirmStandardCourseMarkerDeleteId;
-    this.confirmStandardCourseMarkerDeleteId = null;
-    const marker = this.standardCourseMarkers.find(entry => entry.id === markerId);
-    if (!marker) return;
-    this.pushStandardCourseHistory();
-    this.standardCourseMarkers = marker.groupId
-      ? this.standardCourseMarkers.filter(entry => entry.groupId !== marker.groupId)
-      : this.standardCourseMarkers.filter(entry => entry.id !== markerId);
-  }
-
-  promptStandardCourseLineDelete(kind: 'start' | 'finish', event: Event) {
-    if (!this.selectedRaceCourse || this.playbackRace || this.raceIsActive) return;
-    event.stopPropagation();
-    if (this.isObjectDrawingMode || this.coursePanMode || this.standardCoursePlacementTool) return;
-    this.confirmStandardCourseLineDeleteKind = kind;
-  }
-
-  cancelStandardCourseLineDelete() {
-    this.confirmStandardCourseLineDeleteKind = null;
-  }
-
-  confirmStandardCourseLineDelete() {
-    if (!this.selectedRaceCourse || this.playbackRace || this.raceIsActive || !this.confirmStandardCourseLineDeleteKind) return;
-    const kind = this.confirmStandardCourseLineDeleteKind;
-    this.confirmStandardCourseLineDeleteKind = null;
-    this.pushStandardCourseHistory();
-    if (kind === 'start') {
-      this.standardCourseStartLineDraft = null;
-      this.standardCourseStartFinishMerged = false;
-      return;
-    }
-    this.standardCourseFinishLineDraft = null;
-    this.standardCourseStartFinishMerged = false;
-  }
-
   onCoursePanPointerDown(event: PointerEvent) {
     if (!this.selectedRaceCourse || this.playbackRace || this.raceIsActive || this.isObjectDrawingMode || this.standardCoursePlacementTool) return;
-    if (event.pointerType === 'touch') return;
+    if ((event as PointerEvent).isPrimary === false) return;
     this.activeCoursePanPointerId = event.pointerId;
     const currentTarget = event.currentTarget as SVGGraphicsElement | SVGSVGElement | null;
     const svg = currentTarget instanceof SVGSVGElement ? currentTarget : currentTarget?.ownerSVGElement;
@@ -3208,12 +3432,7 @@ export class SessionEndComponent implements OnInit, OnDestroy {
     this.pendingCustomCourseGateAnchor = null;
     this.pendingStandardCourseLineAnchor = null;
     this.pendingStandardCourseGateAnchor = null;
-    this.confirmCustomCourseClearOpen = false;
-    this.confirmCustomCourseMarkerDeleteId = null;
-    this.confirmCustomCourseLineDeleteKind = null;
-    this.confirmStandardCourseClearOpen = false;
-    this.confirmStandardCourseMarkerDeleteId = null;
-    this.confirmStandardCourseLineDeleteKind = null;
+    this.clearEditorSelection();
     this.activeCustomCoursePanPointerId = null;
     this.customCoursePanLastPoint = null;
     this.activeCoursePanPointerId = null;
@@ -3222,6 +3441,9 @@ export class SessionEndComponent implements OnInit, OnDestroy {
     this.activeCourseElementMode = null;
     this.activeCourseElementType = null;
     this.activeCourseElementMarkerId = null;
+    this.activeCourseElementObjectId = null;
+    this.activeCourseElementStartPoint = null;
+    this.activeCourseElementObjectSnapshot = null;
     this.activeCourseElementMoved = false;
     this.activeCourseElementStartClient = null;
     this.closeCustomCourseNamePrompt();
@@ -4632,7 +4854,8 @@ export class SessionEndComponent implements OnInit, OnDestroy {
               x: point.x,
               y: point.y,
               label: String(this.getNextCustomCourseSequenceNumber()),
-              kind: 'mark'
+              kind: 'mark',
+              color: this.getDefaultMarkerColor()
             }
           ]
         };
@@ -4742,7 +4965,8 @@ export class SessionEndComponent implements OnInit, OnDestroy {
           y: anchor.y,
           label,
           kind: 'gate',
-          groupId
+          groupId,
+          color: this.getDefaultMarkerColor()
         },
         {
           id: `${groupId}-b`,
@@ -4750,7 +4974,8 @@ export class SessionEndComponent implements OnInit, OnDestroy {
           y: point.y,
           label,
           kind: 'gate',
-          groupId
+          groupId,
+          color: this.getDefaultMarkerColor()
         }
       ]
     };
