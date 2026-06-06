@@ -859,7 +859,7 @@
               }
 
               <div class="se-course-stage" [class.se-course-stage--object-draw]="isObjectDrawingMode">
-                <div class="se-course-card" [class.se-course-card--object-draw]="isObjectDrawingMode" (touchstart)="onCoursePinchStart($event)" (touchmove)="onCoursePinchMove($event)" (touchend)="onCoursePinchEnd($event)" (touchcancel)="onCoursePinchEnd($event)" (wheel)="onCourseZoomWheel($event)">
+                <div class="se-course-card" data-allow-touch-zoom="true" [class.se-course-card--object-draw]="isObjectDrawingMode" (touchstart)="onCoursePinchStart($event)" (touchmove)="onCoursePinchMove($event)" (touchend)="onCoursePinchEnd($event)" (touchcancel)="onCoursePinchEnd($event)" (wheel)="onCourseZoomWheel($event)">
                   @if (!isObjectDrawingMode) {
                   <div class="se-course-wind-indicator" aria-hidden="true">
                     <span class="se-course-wind-indicator-label">WIND</span>
@@ -1504,7 +1504,7 @@
               }
 
               <div class="se-course-stage">
-                <div class="se-course-card" (touchstart)="onCoursePinchStart($event)" (touchmove)="onCoursePinchMove($event)" (touchend)="onCoursePinchEnd($event)" (touchcancel)="onCoursePinchEnd($event)" (wheel)="onCourseZoomWheel($event)">
+                <div class="se-course-card" data-allow-touch-zoom="true" (touchstart)="onCoursePinchStart($event)" (touchmove)="onCoursePinchMove($event)" (touchend)="onCoursePinchEnd($event)" (touchcancel)="onCoursePinchEnd($event)" (wheel)="onCourseZoomWheel($event)">
                   <div class="se-course-wind-indicator" aria-hidden="true">
                     <span class="se-course-wind-indicator-label">WIND</span>
                     <svg viewBox="0 0 24 52" class="se-course-wind-indicator-icon">

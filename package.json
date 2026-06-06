@@ -37,6 +37,7 @@
     "@angular/cli": "^21.1.5",
     "@angular/compiler-cli": "^21.1.0",
     "@rollup/rollup-darwin-arm64": "^4.60.2",
+    "angular-cli-ghpages": "^3.0.3",
     "typescript": "~5.9.2"
   }
 }
